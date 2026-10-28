@@ -1,0 +1,12 @@
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/out
+**/TestResults
+**/node_modules
+**/.env
+*.md
+docs/

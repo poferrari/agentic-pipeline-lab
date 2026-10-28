@@ -1,0 +1,116 @@
+using System.Net;
+using System.Net.Http.Json;
+using App.Api.Endpoints;
+using App.Api.Middleware;
+using App.Application.MarketPulse.DTOs;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Xunit;
+
+namespace App.IntegrationTests;
+
+public sealed class MarketPulseApiIntegrationTests(WebApplicationFactory<Program> factory)
+    : IClassFixture<WebApplicationFactory<Program>>
+{
+    private static readonly Guid UserAId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly Guid UserBId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+    [Fact]
+    public async Task HealthChecks_And_SecurityHeaders_ShouldReturn200OkWithOwaspHeaders()
+    {
+        using var client = factory.CreateClient();
+
+        var liveResponse = await client.GetAsync(new Uri("/health/live", UriKind.Relative));
+        var readyResponse = await client.GetAsync(new Uri("/health/ready", UriKind.Relative));
+
+        liveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        readyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        liveResponse.Headers.Should().ContainKey("X-Content-Type-Options");
+        liveResponse.Headers.Should().ContainKey("X-Frame-Options");
+    }
+
+    [Fact]
+    public async Task GetLatestExchangeRates_WithValidBaseCurrency_ShouldReturn200OkAndRatesFromPublicApiAdapter()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(new Uri("/api/v1/rates/USD?symbols=BRL,EUR", UriKind.Relative));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var quote = await response.Content.ReadFromJsonAsync<ExchangeRatesQuoteDto>();
+        quote.Should().NotBeNull();
+        quote!.BaseCurrency.Should().Be("USD");
+        quote.Rates.Should().ContainKey("BRL");
+        quote.Rates["BRL"].Should().BeGreaterThan(0m);
+        quote.Rates.Should().ContainKey("EUR");
+        quote.Rates["EUR"].Should().BeGreaterThan(0m);
+    }
+
+    [Fact]
+    public async Task GetLatestExchangeRates_WithInvalidCurrency_ShouldReturn400ProblemDetails()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(new Uri("/api/v1/rates/INVALID", UriKind.Relative));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problem.Should().NotBeNull();
+        problem!.Title.Should().Be("Currency.InvalidCode");
+    }
+
+    [Fact]
+    public async Task Watchlist_WithoutAuthentication_ShouldReturn401Unauthorized()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(new Uri("/api/v1/watchlist", UriKind.Relative));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Watchlist_FullCrudLifecycle_And_BolaIdorProtection_ShouldEnforceStrictOwnerIsolation()
+    {
+        using var clientA = factory.CreateClient();
+        clientA.DefaultRequestHeaders.Add(HybridSupabaseOrDemoAuthHandler.DemoHeaderName, UserAId.ToString());
+
+        using var clientB = factory.CreateClient();
+        clientB.DefaultRequestHeaders.Add(HybridSupabaseOrDemoAuthHandler.DemoHeaderName, UserBId.ToString());
+
+        // 1. User A creates a WatchItem for EUR -> BRL
+        var createRequest = new CreateWatchItemRequest("EUR", "BRL", 6.10m, NotifyWhenAbove: true, "EUR export alert");
+        var createResponse = await clientA.PostAsJsonAsync("/api/v1/watchlist", createRequest);
+
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdItem = await createResponse.Content.ReadFromJsonAsync<WatchItemDto>();
+        createdItem.Should().NotBeNull();
+        createdItem!.OwnerId.Should().Be(UserAId);
+        createdItem.BaseCurrency.Should().Be("EUR");
+        createdItem.TargetCurrency.Should().Be("BRL");
+        createdItem.CurrentRate.Should().BeGreaterThan(0m);
+
+        // 2. Duplicate creation by User A for same pair returns 409 Conflict
+        var duplicateResponse = await clientA.PostAsJsonAsync("/api/v1/watchlist", createRequest);
+        duplicateResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // 3. BOLA/IDOR Security Test (OWASP API1:2023): User B attempts to GET or DELETE User A's WatchItem
+        var bolaGetResponse = await clientB.GetAsync(new Uri($"/api/v1/watchlist/{createdItem.Id}", UriKind.Relative));
+        bolaGetResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var bolaDeleteResponse = await clientB.DeleteAsync(new Uri($"/api/v1/watchlist/{createdItem.Id}", UriKind.Relative));
+        bolaDeleteResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // 4. User A lists their watchlist and sees their item
+        var listResponse = await clientA.GetAsync(new Uri("/api/v1/watchlist?page=1&pageSize=10", UriKind.Relative));
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var paged = await listResponse.Content.ReadFromJsonAsync<PagedResult<WatchItemDto>>();
+        paged.Should().NotBeNull();
+        paged!.Items.Should().ContainSingle(x => x.Id == createdItem.Id);
+
+        // 5. User A deletes their WatchItem -> 204 No Content
+        var deleteResponse = await clientA.DeleteAsync(new Uri($"/api/v1/watchlist/{createdItem.Id}", UriKind.Relative));
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+}

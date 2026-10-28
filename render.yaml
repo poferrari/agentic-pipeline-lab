@@ -1,0 +1,25 @@
+# Render Blueprint Specification (Infrastructure as Code for Render Containers)
+# Project: prj-d6rakhshg0os73a5ahqg | Environment: evm-d6rakhshg0os73a5ahr0
+
+services:
+  - type: web
+    name: agentic-pipeline-lab-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health/live
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: PORT
+        value: "8080"
+      - key: ExternalApis__FrankfurterBaseUrl
+        value: https://api.frankfurter.app/
+      - key: Auth__AllowDemoHeader
+        value: "true"
+      - key: Supabase__Url
+        value: https://jrhpbdftohjeymzwkbee.supabase.co

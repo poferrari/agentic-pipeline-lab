@@ -1,0 +1,28 @@
+{
+  "pipeline-context-reminder": {
+    "enabled": true,
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/session-start-hook.ps1",
+        "timeout": 10
+      }
+    ]
+  },
+  "command-safety-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/pre-command-hook.ps1",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+

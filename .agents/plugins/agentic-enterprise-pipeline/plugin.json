@@ -1,0 +1,12 @@
+{
+  "name": "agentic-enterprise-pipeline",
+  "displayName": "Esteira de Desenvolvimento Agêntico (.NET Hexagonal + React + OWASP)",
+  "version": "1.0.0",
+  "description": "Esteira autônoma de Engenharia de Software: Discovery proativo, Spec, DoR/DoD, Backend C# Minimal API Hexagonal + DDD + RabbitMQ + PostgreSQL + Supabase Auth, Frontend React/Next.js + TanStack Query, Testes Automatizados e Auditoria OWASP.",
+  "suggestedPrompts": [
+    "Analise o contexto desta pasta, levante RF/RNF, preveja riscos, valide o DoR e gere a Spec e as Tasks de desenvolvimento",
+    "Execute a esteira agêntica completa para implementar a próxima feature da Spec com testes automatizados e revisão OWASP",
+    "Audite o repositório atual contra a Definition of Done (DoD), execute todos os testes e gere o relatório detalhado de Pull Request"
+  ]
+}
+
