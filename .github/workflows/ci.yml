@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET 9.0
         uses: actions/setup-dotnet@v4
@@ -80,7 +80,7 @@ jobs:
     needs: backend-quality-and-tests
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build Production Container Image
         run: docker build -t agentic-pipeline-lab:ci -f Dockerfile .
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run Trivy Filesystem Scan (Vulnerabilities & Secrets)
         uses: aquasecurity/trivy-action@master
