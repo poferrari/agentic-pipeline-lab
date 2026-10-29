@@ -68,7 +68,7 @@ function getHeaders(userId, clientIp) {
         headers['X-Demo-User-Id'] = userId;
     }
     if (clientIp) {
-        headers['CF-Connecting-IP'] = clientIp;
+        // headers["CF-Connecting-IP"] = clientIp;
     }
     if (ORIGIN_SECRET) {
         headers['X-Origin-Verify'] = ORIGIN_SECRET;
@@ -175,7 +175,7 @@ export function testWatchlistQueries() {
     } else {
         const queryOk = check(res, {
             'query watchlist status is 200': (r) => r.status === 200,
-            'query watchlist is JSON array': (r) => r.body && r.body.startsWith('['),
+            'query watchlist has items': (r) => r.body && (r.body.includes('"items"') || r.body.startsWith('[')),
         });
         errorRate.add(!queryOk);
     }

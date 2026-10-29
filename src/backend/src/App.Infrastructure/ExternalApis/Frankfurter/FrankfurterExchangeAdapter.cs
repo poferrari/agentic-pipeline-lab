@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using App.Application.Abstractions;
 using App.Application.MarketPulse.DTOs;
 using App.Domain.Common;
+using App.Infrastructure.RateLimiting;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
@@ -84,6 +85,20 @@ public sealed class FrankfurterExchangeAdapter(
                     response.Rates,
                     DateTimeOffset.UtcNow);
             }
+        }
+        catch (LeakyBucketOverflowException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Outbound Leaky Bucket overflow for base {BaseCurrency}. Buffer capacity exceeded; using deterministic ECB reference fallback.",
+                baseCurrency);
+        }
+        catch (LeakyBucketTimeoutException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Outbound Leaky Bucket queue wait timeout for base {BaseCurrency}. Using deterministic ECB reference fallback.",
+                baseCurrency);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
