@@ -15,6 +15,11 @@ using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 2 * 1024 * 1024; // 2 MB limit to mitigate buffer exhaustion DoS
+});
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
@@ -134,10 +139,21 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("fixed", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            partitionKey: ResolveClientPartitionKey(httpContext),
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("strict", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ResolveClientPartitionKey(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
@@ -199,6 +215,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseMiddleware<RequestTelemetryMiddleware>();
+app.UseMiddleware<OriginShieldingMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseCors("StrictCors");
 app.UseRateLimiter();
@@ -266,5 +283,34 @@ public partial class Program
 
     protected Program()
     {
+    }
+
+    private static string ResolveClientPartitionKey(HttpContext httpContext)
+    {
+        var userId = httpContext.User.FindFirst("sub")?.Value
+            ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            return $"user:{userId}";
+        }
+
+        if (httpContext.Request.Headers.TryGetValue("CF-Connecting-IP", out var cfIp) &&
+            !string.IsNullOrWhiteSpace(cfIp.FirstOrDefault()))
+        {
+            return $"cf-ip:{cfIp.First()!.Trim()}";
+        }
+
+        if (httpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor) &&
+            !string.IsNullOrWhiteSpace(forwardedFor.FirstOrDefault()))
+        {
+            var clientIp = forwardedFor.First()!.Split(',')[0].Trim();
+            if (!string.IsNullOrWhiteSpace(clientIp))
+            {
+                return $"xff-ip:{clientIp}";
+            }
+        }
+
+        return $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous"}";
     }
 }
