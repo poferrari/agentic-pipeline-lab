@@ -1,3 +1,4 @@
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "SilentlyContinue"
 $inputJson = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($inputJson)) {
@@ -11,7 +12,7 @@ try {
     if ($cmd -match "(?i)(git\s+push\s+.*--force|rm\s+-rf\s+/|DROP\s+DATABASE|Format-Volume)") {
         $deny = @{
             decision = "deny"
-            reason = "Bloqueado pelo Guardrail de Segurança da Esteira Agêntica: comando destrutivo detectado ($cmd)."
+            reason = "Blocked by Safety Guardrail: destructive command detected."
         }
         $deny | ConvertTo-Json -Compress
         exit 0

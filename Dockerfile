@@ -31,11 +31,16 @@ RUN dotnet publish ./src/backend/src/App.Api/App.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
 WORKDIR /app
 
+# Install icu-libs and tzdata for full globalization and curl for health probes
+USER root
+RUN apk add --no-cache icu-libs tzdata curl
+
 # Security Hardening: Run as non-root user ($APP_UID provided by official .NET images)
 USER $APP_UID
 
 ENV ASPNETCORE_ENVIRONMENT=Production \
     ASPNETCORE_URLS=http://+:8080 \
+    PORT=8080 \
     DOTNET_EnableDiagnostics=0 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 

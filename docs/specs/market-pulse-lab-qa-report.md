@@ -1,33 +1,33 @@
-# 🛡️ Relatório de Auditoria QA, Segurança OWASP e Definition of Done (DoD)
+# 🛡️ QA, OWASP Security & Definition of Done (DoD) Audit Report
 
-- **Projeto Validado**: `MarketPulse Lab (Intelligent Currency & Market Watchlist Hub)`
-- **Repositório**: `https://github.com/poferrari/agentic-pipeline-lab`
-- **Ambiente de Deploy (Containers)**: `Render (prj-d6rakhshg0os73a5ahqg / evm-d6rakhshg0os73a5ahr0)`
+- **Validated Project**: `MarketPulse Lab (Intelligent Currency & Market Watchlist Hub)`
+- **Repository**: `https://github.com/poferrari/agentic-pipeline-lab`
+- **Deployment Target (Containers)**: `Render (prj-d6rakhshg0os73a5ahqg / evm-d6rakhshg0os73a5ahr0)`
 - **Auditor**: `qa-security-reviewer`
-- **Data**: `2026-10-28`
-- **Veredito Final**: ✅ **APROVADO (0 Blockers | 0 Warnings | 25/25 Testes Passando)**
+- **Date**: `2026-10-28`
+- **Final Verdict**: ✅ **APPROVED (0 Blockers | 0 Warnings | 25/25 Tests Passing)**
 
 ---
 
-## 1. Evidência Real da Bateria de Testes Executados (`validate-all.ps1`)
+## 1. Automated Test Suite Execution Evidence (`scripts/validate-all.ps1`)
 
-| Suíte de Testes | Projeto | Ferramentas | Total | Passaram | Falharam | Tempo | Status |
+| Test Suite | Project | Tools | Total | Passed | Failed | Duration | Status |
 | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Testes de Unidade (Domínio & Casos de Uso)** | `App.UnitTests` | `xUnit` + `FluentAssertions` + `NSubstitute` | `17` | `17` | `0` | `0.48s` | ✅ `100% PASS` |
-| **Testes de Arquitetura Hexagonal** | `App.ArchTests` | `NetArchTest.Rules` | `3` | `3` | `0` | `0.49s` | ✅ `100% PASS` |
-| **Testes de Integração Real (API + Frankfurter BCE + BOLA)** | `App.IntegrationTests` | `WebApplicationFactory<Program>` + `HttpClient` | `5` | `5` | `0` | `1.54s` | ✅ `100% PASS` |
-| **TOTAL CONSOLIDADO** | `MarketPulse.sln` | `.NET 9.0.311` (`-warnaserror`) | **`25`** | **`25`** | **`0`** | **`2.51s`** | ✅ **APROVADO** |
+| **Unit Tests (Domain & Use Cases)** | `App.UnitTests` | `xUnit` + `FluentAssertions` + `NSubstitute` | `17` | `17` | `0` | `0.48s` | ✅ `100% PASS` |
+| **Hexagonal Architecture Tests** | `App.ArchTests` | `NetArchTest.Rules` | `3` | `3` | `0` | `0.49s` | ✅ `100% PASS` |
+| **Integration Tests (API + Frankfurter ECB + BOLA)** | `App.IntegrationTests` | `WebApplicationFactory<Program>` + `HttpClient` | `5` | `5` | `0` | `1.54s` | ✅ `100% PASS` |
+| **CONSOLIDATED TOTAL** | `MarketPulse.sln` | `.NET 9.0.311` (`-warnaserror`) | **`25`** | **`25`** | **`0`** | **`2.51s`** | ✅ **APPROVED** |
 
 ---
 
-## 2. Auditoria OWASP API Security Top 10 (2023/2026)
+## 2. OWASP API Security Top 10 Audit
 
-| Item OWASP | Descrição | Implementação Verificada no Código | Status |
+| OWASP Identifier | Vulnerability Category | Verified Implementation in Codebase | Status |
 | :--- | :--- | :--- | :---: |
-| **API1:2023** | **Broken Object Level Authorization (BOLA / IDOR)** | `CurrencyWatchItemRepository.GetByIdAsync(id, ownerId)` filtra estritamente pelo `OwnerId` autenticado. Validado pelo teste de integração `Watchlist_FullCrudLifecycle_And_BolaIdorProtection_ShouldEnforceStrictOwnerIsolation` (Usuário B recebe `404 Not Found` ao tentar ler ou excluir item do Usuário A). | ✅ |
-| **API2:2023** | **Broken Authentication** | Configuração `JwtBearer` para tokens do Supabase Auth (`ValidateIssuer`, `ValidateAudience`, `ValidateLifetime`, `ClockSkew = 30s`). Requisições sem credencial em `/api/v1/watchlist` retornam `401 Unauthorized`. | ✅ |
-| **API3:2023** | **Broken Object Property Level Authorization (Mass Assignment)** | Endpoints Minimal API consomem exclusivamente `CreateWatchItemRequest` (`sealed record`) e retornam `WatchItemDto` / `ExchangeRatesQuoteDto`. Entidades do domínio nunca são expostas diretamente. | ✅ |
-| **API4:2023** | **Unrestricted Resource Consumption** | `GetWatchItemsQueryValidator` impõe `PageSize` entre `1` e `100`. `FixedWindowRateLimiter` ativo (`60 req/min`) retornando `429 Too Many Requests`. | ✅ |
-| **API5:2023** | **Broken Function Level Authorization** | Grupo `/api/v1/watchlist` exige `.RequireAuthorization()` em todas as rotas de escrita e leitura privada. | ✅ |
-| **API8:2023** | **Security Misconfiguration** | `SecurityHeadersMiddleware` injeta `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`. `GlobalExceptionHandler` padroniza erros em `ProblemDetails` (RFC 7807) sem vazar stack traces. | ✅ |
-| **API10:2023** | **Unsafe Consumption of APIs** | Integração com a API pública `https://api.frankfurter.app` isolada no `FrankfurterExchangeAdapter` com timeout de `5s`, cache `HybridCache` (L1/L2) e fallback determinístico resiliente. | ✅ |
+| **API1:2023** | **Broken Object Level Authorization (BOLA / IDOR)** | `CurrencyWatchItemRepository.GetByIdAsync(id, ownerId)` strictly scopes database operations by authenticated `OwnerId`. Validated by integration test `Watchlist_FullCrudLifecycle_And_BolaIdorProtection_ShouldEnforceStrictOwnerIsolation` (User B receives `404 Not Found` when attempting to access User A's watchlist items). | ✅ |
+| **API2:2023** | **Broken Authentication** | `JwtBearer` authentication configured for Supabase Auth JWT tokens (`ValidateIssuer`, `ValidateAudience`, `ValidateLifetime`, `ClockSkew = 30s`). Unauthenticated requests to `/api/v1/watchlist` return `401 Unauthorized`. | ✅ |
+| **API3:2023** | **Broken Object Property Level Authorization (Mass Assignment)** | Minimal API endpoints accept only strongly-typed `CreateWatchItemRequest` (`sealed record`) and return `WatchItemDto` / `ExchangeRatesQuoteDto`. Core domain entities are never exposed to outer contracts. | ✅ |
+| **API4:2023** | **Unrestricted Resource Consumption** | `GetWatchItemsQueryValidator` enforces `PageSize` between `1` and `100`. `FixedWindowRateLimiter` is active (`60 req/min`), returning standard `429 Too Many Requests`. | ✅ |
+| **API5:2023** | **Broken Function Level Authorization** | The `/api/v1/watchlist` route group strictly requires `.RequireAuthorization()` on all mutation and private read routes. | ✅ |
+| **API8:2023** | **Security Misconfiguration** | `SecurityHeadersMiddleware` injects `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy`. `GlobalExceptionHandler` converts all uncaught errors into RFC 7807 `ProblemDetails` without leaking sensitive stack traces. | ✅ |
+| **API10:2023** | **Unsafe Consumption of APIs** | Integration with the public `https://api.frankfurter.app` API is encapsulated within `FrankfurterExchangeAdapter` featuring a strict 5-second timeout, `HybridCache` (L1 memory with stampede protection), and graceful fallback handling. | ✅ |

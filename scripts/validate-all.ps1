@@ -20,36 +20,47 @@ Write-Host "[OK] Nenhum arquivo .env sensivel rastreado." -ForegroundColor Green
 
 # 2. Validacao do Backend (.NET C# Minimal API + Hexagonal + DDD)
 Write-Host "`n[2/4] Validando Backend C# (.NET)..." -ForegroundColor Yellow
-if (Test-Path "src/backend") {
-    $slnFiles = @(Get-ChildItem -Path "src/backend" -Include "*.sln", "*.slnx", "*.csproj" -Recurse -Depth 2 -ErrorAction SilentlyContinue)
-    if ($slnFiles.Count -gt 0) {
-        Push-Location "src/backend"
-        try {
-            Write-Host " -> Executando dotnet restore..."
-            dotnet restore
-            if ($LASTEXITCODE -ne 0) { throw "Falha no dotnet restore" }
+$backendCandidates = @("src/backend")
+if (Test-Path "sandbox") {
+    $sandboxBackends = Get-ChildItem -Path "sandbox" -Directory | ForEach-Object { Join-Path $_.FullName "src/backend" } | Where-Object { Test-Path $_ }
+    $backendCandidates += $sandboxBackends
+}
 
-            Write-Host " -> Verificando formatacao e estilo (dotnet format)..."
-            dotnet format --verify-no-changes --no-restore
-            if ($LASTEXITCODE -ne 0) { throw "Falha no dotnet format. Rode 'dotnet format' para corrigir." }
+$validatedAnyBackend = $false
+foreach ($backendDir in $backendCandidates) {
+    if (Test-Path $backendDir) {
+        $slnFiles = @(Get-ChildItem -Path $backendDir -Include "*.sln", "*.slnx", "*.csproj" -Recurse -Depth 2 -ErrorAction SilentlyContinue)
+        if ($slnFiles.Count -gt 0) {
+            $validatedAnyBackend = $true
+            Write-Host " -> Validando solucao em: $backendDir" -ForegroundColor Cyan
+            Push-Location $backendDir
+            try {
+                Write-Host " -> Executando dotnet restore..."
+                dotnet restore
+                if ($LASTEXITCODE -ne 0) { throw "Falha no dotnet restore ($backendDir)" }
 
-            Write-Host " -> Compilando em modo estrito (Zero Warnings = -warnaserror)..."
-            dotnet build --configuration Release --no-restore -warnaserror
-            if ($LASTEXITCODE -ne 0) { throw "Falha na compilacao estrita do Backend." }
+                Write-Host " -> Verificando formatacao e estilo (dotnet format)..."
+                dotnet format --verify-no-changes --no-restore
+                if ($LASTEXITCODE -ne 0) { throw "Falha no dotnet format ($backendDir)." }
 
-            Write-Host " -> Executando Testes Automatizados (Unidade, Arquitetura e Integracao)..."
-            dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
-            if ($LASTEXITCODE -ne 0) { throw "Falha nos testes automatizados do Backend." }
+                Write-Host " -> Compilando em modo estrito (Zero Warnings = -warnaserror)..."
+                dotnet build --configuration Release --no-restore -warnaserror
+                if ($LASTEXITCODE -ne 0) { throw "Falha na compilacao estrita do Backend ($backendDir)." }
 
-            Write-Host "[OK] Backend C# aprovado com 0 erros e 0 warnings!" -ForegroundColor Green
-        } finally {
-            Pop-Location
+                Write-Host " -> Executando Testes Automatizados (Unidade, Arquitetura e Integracao)..."
+                dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
+                if ($LASTEXITCODE -ne 0) { throw "Falha nos testes automatizados do Backend ($backendDir)." }
+
+                Write-Host "[OK] Backend C# ($backendDir) aprovado com 0 erros e 0 warnings!" -ForegroundColor Green
+            } finally {
+                Pop-Location
+            }
         }
-    } else {
-        Write-Host "[INFO] Pasta src/backend encontrada, mas sem projetos .csproj/.sln ainda." -ForegroundColor DarkGray
     }
-} else {
-    Write-Host "[INFO] Pasta src/backend ainda nao inicializada. Use 'scripts/scaffold-monolith.ps1' quando for iniciar a codificacao." -ForegroundColor DarkGray
+}
+
+if (-not $validatedAnyBackend) {
+    Write-Host "[INFO] Nenhuma solucao backend inicializada em src/backend ou sandbox/*/src/backend." -ForegroundColor DarkGray
 }
 
 # 3. Validacao do Frontend (React / Next.js + TypeScript + TanStack Query + Vitest)

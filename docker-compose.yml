@@ -1,25 +1,46 @@
 services:
+  marketpulse-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: marketpulse_lab_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      PORT: "8080"
+      ConnectionStrings__Database: "Host=postgres;Port=5432;Database=marketpulse_db;Username=postgres;Password=postgres_dev_password"
+      ConnectionStrings__RabbitMq: "amqp://guest:guest@rabbitmq:5672"
+      ExternalApis__FrankfurterBaseUrl: "https://api.frankfurter.app/"
+      Auth__AllowDemoHeader: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
   postgres:
     image: postgres:17-alpine
-    container_name: pipeline_postgres
+    container_name: marketpulse_lab_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
-      POSTGRES_DB: ${POSTGRES_DB:-app_dev_db}
+      POSTGRES_DB: ${POSTGRES_DB:-marketpulse_db}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - marketpulse_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app_dev_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-marketpulse_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   rabbitmq:
     image: rabbitmq:4-management-alpine
-    container_name: pipeline_rabbitmq
+    container_name: marketpulse_lab_rabbitmq
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
@@ -28,7 +49,7 @@ services:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - marketpulse_rmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -36,6 +57,5 @@ services:
       retries: 5
 
 volumes:
-  postgres_data:
-  rabbitmq_data:
-
+  marketpulse_pg_data:
+  marketpulse_rmq_data:
