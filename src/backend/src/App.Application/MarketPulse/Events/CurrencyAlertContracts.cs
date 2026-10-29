@@ -40,3 +40,4 @@ public sealed record CurrencyAlertNotificationEvent(
     string? CorrelationId,
     DateTimeOffset OccurredOnUtc,
     string SchemaVersion = "1.0.0") : ICurrencyAlertConsumerContract;
+

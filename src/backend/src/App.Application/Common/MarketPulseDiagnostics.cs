@@ -42,3 +42,4 @@ public static class MarketPulseDiagnostics
         unit: "s",
         description: "Time spent consuming and processing integration events");
 }
+
