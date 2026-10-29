@@ -9,6 +9,11 @@ public sealed class LeakyBucketOverflowException : HttpRequestException
         : base(message, null, System.Net.HttpStatusCode.TooManyRequests)
     {
     }
+
+    public LeakyBucketOverflowException(string message, Exception innerException)
+        : base(message, innerException, System.Net.HttpStatusCode.TooManyRequests)
+    {
+    }
 }
 
 /// <summary>
@@ -20,5 +25,9 @@ public sealed class LeakyBucketTimeoutException : HttpRequestException
         : base(message, null, System.Net.HttpStatusCode.RequestTimeout)
     {
     }
-}
 
+    public LeakyBucketTimeoutException(string message, Exception innerException)
+        : base(message, innerException, System.Net.HttpStatusCode.RequestTimeout)
+    {
+    }
+}
