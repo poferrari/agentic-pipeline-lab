@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using App.Api.Diagnostics;
 using App.Api.Endpoints;
 using App.Api.Middleware;
 using App.Application;
@@ -6,6 +7,9 @@ using App.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +17,51 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
+
+var otelResource = ResourceBuilder.CreateDefault()
+    .AddService(serviceName: MarketPulseDiagnostics.ServiceName, serviceVersion: MarketPulseDiagnostics.ServiceVersion);
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing.SetResourceBuilder(otelResource)
+            .AddSource(MarketPulseDiagnostics.ServiceName)
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.RecordException = true;
+            })
+            .AddHttpClientInstrumentation(options =>
+            {
+                options.RecordException = true;
+            });
+
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            tracing.AddOtlpExporter(opt => opt.Endpoint = new Uri(otlpEndpoint));
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            tracing.AddConsoleExporter();
+        }
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics.SetResourceBuilder(otelResource)
+            .AddMeter(MarketPulseDiagnostics.ServiceName)
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation();
+
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            metrics.AddOtlpExporter(opt => opt.Endpoint = new Uri(otlpEndpoint));
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            metrics.AddConsoleExporter();
+        }
+    });
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -79,13 +128,14 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(allowedOrigins)
             .WithMethods("GET", "POST", "DELETE", "OPTIONS")
-            .WithHeaders("Authorization", "Content-Type", HybridSupabaseOrDemoAuthHandler.DemoHeaderName);
+            .WithHeaders("Authorization", "Content-Type", HybridSupabaseOrDemoAuthHandler.DemoHeaderName, RequestTelemetryMiddleware.CorrelationIdHeader);
     });
 });
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseMiddleware<RequestTelemetryMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseCors("StrictCors");
 app.UseRateLimiter();
@@ -98,8 +148,15 @@ app.MapGet("/", () => TypedResults.Ok(new
 {
     service = "MarketPulse Lab - Hexagonal DDD API",
     version = "1.0.0",
-    architecture = "Hexagonal (Ports & Adapters) + DDD + HybridCache + MassTransit",
+    architecture = "Hexagonal (Ports & Adapters) + DDD + HybridCache + MassTransit + OpenTelemetry",
     publicApiProvider = "Frankfurter ECB Exchange Rates API (https://api.frankfurter.app)",
+    observability = new
+    {
+        telemetry = "OpenTelemetry (Tracing, Metrics & Structured Logging)",
+        serviceName = MarketPulseDiagnostics.ServiceName,
+        serviceVersion = MarketPulseDiagnostics.ServiceVersion,
+        protocol = "OTLP / W3C TraceContext"
+    },
     documentation = "/openapi/v1.json",
     endpoints = EndpointCatalog
 })).AllowAnonymous().WithTags("System");

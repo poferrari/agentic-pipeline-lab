@@ -1,3 +1,4 @@
+using App.Api.Diagnostics;
 using App.Application.MarketPulse.DTOs;
 using App.Application.MarketPulse.Queries.GetExchangeRates;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +19,17 @@ public sealed class ExchangeRatesEndpoints : IEndpoint
             GetExchangeRatesQueryHandler handler,
             CancellationToken ct) =>
         {
-            var result = await handler.HandleAsync(new GetExchangeRatesQuery(baseCurrency, symbols), ct);
+            var normalizedBase = (baseCurrency ?? string.Empty).Trim().ToUpperInvariant();
+            MarketPulseDiagnostics.RatesRequestsCounter.Add(1, new KeyValuePair<string, object?>("currency.base", normalizedBase));
+
+            using var activity = MarketPulseDiagnostics.ActivitySource.StartActivity("ExchangeRates.GetQuote");
+            activity?.SetTag("currency.base", normalizedBase);
+            if (!string.IsNullOrWhiteSpace(symbols))
+            {
+                activity?.SetTag("currency.symbols", symbols);
+            }
+
+            var result = await handler.HandleAsync(new GetExchangeRatesQuery(baseCurrency ?? string.Empty, symbols), ct);
             return result.IsSuccess
                 ? TypedResults.Ok(result.Value)
                 : result.ToProblemDetails();
