@@ -1,4 +1,4 @@
-using App.Api.Diagnostics;
+using App.Application.Common;
 using App.Application.MarketPulse.DTOs;
 using App.Application.MarketPulse.Queries.GetExchangeRates;
 using Microsoft.AspNetCore.Mvc;

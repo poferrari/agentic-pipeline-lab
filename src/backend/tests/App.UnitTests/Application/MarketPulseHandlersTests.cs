@@ -63,7 +63,7 @@ public sealed class MarketPulseHandlersTests
 
         await repository.Received(1).AddAsync(Arg.Any<CurrencyWatchItem>(), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        await eventBus.Received(1).PublishAsync(Arg.Any<WatchItemCreatedIntegrationEvent>(), Arg.Any<CancellationToken>());
+        await eventBus.Received(1).PublishAsync(Arg.Any<CurrencyAlertNotificationEvent>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

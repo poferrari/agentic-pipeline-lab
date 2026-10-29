@@ -1,8 +1,8 @@
 using System.Threading.RateLimiting;
-using App.Api.Diagnostics;
 using App.Api.Endpoints;
 using App.Api.Middleware;
 using App.Application;
+using App.Application.Common;
 using App.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -80,6 +80,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
         tracing.AddSource(MarketPulseDiagnostics.ServiceName)
+            .AddSource("MassTransit")
             .AddAspNetCoreInstrumentation(options =>
             {
                 options.RecordException = true;
@@ -211,6 +212,17 @@ app.MapGet("/", () => TypedResults.Ok(new
     service = "MarketPulse Lab - Hexagonal DDD API",
     version = "1.0.0",
     architecture = "Hexagonal (Ports & Adapters) + DDD + HybridCache + MassTransit + OpenTelemetry",
+    messaging = new
+    {
+        broker = "RabbitMQ / CloudAMQP (AMQP 0-9-1)",
+        topology = "Exchange-to-Exchange with Queue bindings",
+        queue = "marketpulse.currency-alerts",
+        contracts = new
+        {
+            wireOut = "CurrencyAlertNotificationEvent (Strict Schema)",
+            wireIn = "ICurrencyAlertConsumerContract (Loose Schema)"
+        }
+    },
     publicApiProvider = "Frankfurter ECB Exchange Rates API (https://api.frankfurter.app)",
     observability = new
     {

@@ -1,4 +1,4 @@
-using App.Api.Diagnostics;
+using App.Application.Common;
 using App.Application.MarketPulse.Commands.CreateWatchItem;
 using App.Application.MarketPulse.Commands.DeleteWatchItem;
 using App.Application.MarketPulse.DTOs;

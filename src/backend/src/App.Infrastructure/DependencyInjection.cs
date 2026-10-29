@@ -57,7 +57,7 @@ public static class DependencyInjection
         var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMq");
         services.AddMassTransit(bus =>
         {
-            bus.AddConsumer<WatchItemCreatedConsumer>();
+            bus.AddConsumer<CurrencyAlertConsumer>();
 
             if (!string.IsNullOrWhiteSpace(rabbitMqConnectionString))
             {
@@ -69,6 +69,13 @@ public static class DependencyInjection
                         TimeSpan.FromSeconds(1),
                         TimeSpan.FromSeconds(7),
                         TimeSpan.FromSeconds(2)));
+
+                    cfg.ReceiveEndpoint("marketpulse.currency-alerts", e =>
+                    {
+                        e.ConfigureConsumer<CurrencyAlertConsumer>(context);
+                        e.PrefetchCount = 16;
+                    });
+
                     cfg.ConfigureEndpoints(context);
                 });
             }

@@ -212,6 +212,37 @@ flowchart TD
 
 ---
 
+### Playbook D: Investigação de Mensageria Event-Driven (RabbitMQ / CloudAMQP)
+
+**Sintoma:** Alertas de cotação não disparados, mensagens acumuladas na fila ou divergência entre `marketpulse_messaging_published_total` e `marketpulse_messaging_consumed_total`.
+
+1. **Passo 1 (Auditar Ciclo de Vida no Loki)**:
+   Filtre os logs de publicação e consumo para acompanhar o trânsito do evento:
+   ```logql
+   {service_name="agentic-pipeline-lab-api"} |= "EventBus"
+   ```
+   - **`[PUBLISH_START]` / `[PUBLISH_SUCCESS]`**: Confirma que o use case `CreateWatchItemUseCase` gerou o `CurrencyAlertNotificationEvent` e publicou via MassTransit no RabbitMQ.
+   - **`[CONSUME_START]` / `[CONSUME_SUCCESS]`**: Confirma que o consumidor `CurrencyAlertConsumer` recebeu a mensagem na fila `marketpulse.currency-alerts` e processou com sucesso.
+   - **`[CONSUME_SKIPPED_DUPLICATE]`**: Mensagem reentregue pelo broker foi descartada de forma segura pelo mecanismo de **idempotência** (sem efeitos colaterais duplicados).
+   - **`[CONSUME_FAILED]`**: Exceção capturada durante o consumo. A mensagem entrará na política de retry exponencial do MassTransit ou na Dead Letter Queue (`_error`).
+
+2. **Passo 2 (Rastreamento Distribuído no Tempo)**:
+   Pesquise no Grafana Tempo por:
+   ```traceql
+   { span.name = "CurrencyAlertConsumer.Consume" }
+   ```
+   Inspecione os atributos do span:
+   - `messaging.system` = `rabbitmq`
+   - `messaging.destination` = `marketpulse.currency-alerts`
+   - `messaging.event_id` = UUID v7 do evento
+   - `correlation.id` = Correlation ID propagado ponta a ponta desde a requisição HTTP original!
+
+3. **Passo 3 (Painel de Métricas CloudAMQP no Prometheus)**:
+   - **Taxa de Mensagens**: `rate(marketpulse_messaging_published_total[1m])` vs `rate(marketpulse_messaging_consumed_total[1m])`.
+   - **Latência do Consumer**: `histogram_quantile(0.95, sum(rate(marketpulse_messaging_consume_duration_seconds_bucket[5m])) by (le))`.
+
+---
+
 ## 5. Instruções para Agentes de IA Autônomos
 
 Quando um Agente de IA for convocado para diagnosticar um problema nesta aplicação:
@@ -220,3 +251,4 @@ Quando um Agente de IA for convocado para diagnosticar um problema nesta aplica�
 3. Não presuma a causa raiz sem antes correlacionar o **Log do Erro** com o **Span do Trace**.
 4. Valide se os testes automatizados da solução cobrem o cenário usando `pwsh -File scripts/validate-all.ps1`.
 5. Apresente no relatório final: **Horário da Ocorrência**, **Trace ID**, **Span Ofensor**, **Causa Raiz Comprovada** e **Pull Request de Correção**.
+

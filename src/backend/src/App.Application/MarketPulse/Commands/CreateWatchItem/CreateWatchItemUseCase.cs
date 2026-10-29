@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using App.Application.Abstractions;
 using App.Application.MarketPulse.DTOs;
 using App.Application.MarketPulse.Events;
@@ -22,19 +23,23 @@ public sealed class CreateWatchItemCommandValidator : AbstractValidator<CreateWa
     public CreateWatchItemCommandValidator()
     {
         RuleFor(x => x.BaseCurrency)
-            .NotEmpty()
-            .Length(3);
+            .NotEmpty().WithMessage("Base currency is required.")
+            .Length(3).WithMessage("Base currency must be a 3-letter ISO code.");
 
         RuleFor(x => x.TargetCurrency)
-            .NotEmpty()
-            .Length(3);
+            .NotEmpty().WithMessage("Target currency is required.")
+            .Length(3).WithMessage("Target currency must be a 3-letter ISO code.");
+
+        RuleFor(x => x)
+            .Must(x => !string.Equals(x.BaseCurrency?.Trim(), x.TargetCurrency?.Trim(), StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Base currency and target currency must be different.");
 
         RuleFor(x => x.TargetRate)
-            .GreaterThan(0m)
-            .LessThanOrEqualTo(TargetRate.MaxAllowedRate);
+            .GreaterThan(0m).WithMessage("Target rate must be strictly greater than zero.")
+            .LessThanOrEqualTo(TargetRate.MaxAllowedRate).WithMessage("Target rate exceeds realistic boundary.");
 
         RuleFor(x => x.Notes)
-            .MaximumLength(CurrencyWatchItem.MaxNotesLength);
+            .MaximumLength(CurrencyWatchItem.MaxNotesLength).WithMessage("Notes must not exceed 500 characters.");
     }
 }
 
@@ -106,16 +111,24 @@ public sealed class CreateWatchItemCommandHandler(
         await repository.AddAsync(watchItem, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
+        var currentRate = watchItem.LastKnownRate;
+        var spread = currentRate.HasValue ? watchItem.CalculateSpreadPercentage(currentRate.Value) : 0m;
+        var correlationId = Activity.Current?.GetTagItem("correlation.id")?.ToString()
+            ?? Activity.Current?.TraceId.ToString();
+
         await eventBusPublisher.PublishAsync(
-            new WatchItemCreatedIntegrationEvent(
+            new CurrencyAlertNotificationEvent(
                 Guid.CreateVersion7(),
                 watchItem.Id,
                 watchItem.OwnerId,
                 watchItem.BaseCurrency.Value,
                 watchItem.TargetCurrency.Value,
                 watchItem.TargetRate.Value,
-                watchItem.LastKnownRate,
+                currentRate,
+                spread,
                 watchItem.IsTriggered,
+                watchItem.Notes,
+                correlationId,
                 DateTimeOffset.UtcNow),
             ct);
 
