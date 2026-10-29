@@ -1,32 +1,32 @@
 ---
 name: sre-observability-telemetry
 description: >-
-  Guia executável de SRE (Site Reliability Engineering), Observabilidade (Logs, Métricas e Traces com OpenTelemetry),
-  Monitoramento (Grafana, Mimir, Loki, Tempo e Aspire Dashboard), Investigação de Incidentes, Debugging Estruturado e RCA.
+  Executable guide for Site Reliability Engineering (SRE), Observability (Logs, Metrics, Traces with OpenTelemetry),
+  Monitoring (Grafana, Mimir, Loki, Tempo, Aspire Dashboard), Incident Investigation, Structured Debugging, and RCA.
 ---
 
-# Engenharia de Confiabilidade (SRE) e Observabilidade com OpenTelemetry & Grafana
+# Site Reliability Engineering (SRE) and Observability with OpenTelemetry & Grafana
 
-Esta skill estabelece os padrões técnicos e operacionais de **SRE (Site Reliability Engineering)**, **Observabilidade Moderna (Logs, Métricas e Traces)** e **Gestão de Incidentes** para aplicações corporativas com zero aprisionamento tecnológico (Vendor-Neutral).
+This skill establishes the technical and operational standards for **Site Reliability Engineering (SRE)**, **Modern Observability (Logs, Metrics, Traces)**, and **Incident Management** for enterprise applications with zero vendor lock-in.
 
-Consulte também o runbook detalhado em [`docs/sre/INCIDENT_INVESTIGATION_RUNBOOK.md`](file:///d:/pipeline-dev-automatizador/docs/sre/INCIDENT_INVESTIGATION_RUNBOOK.md).
+Consult the incident runbook at [`docs/sre/INCIDENT_INVESTIGATION_RUNBOOK.md`](file:///d:/pipeline-dev-automatizador/docs/sre/INCIDENT_INVESTIGATION_RUNBOOK.md).
 
 ---
 
-## 1. Princípios de SRE e os 4 Sinais de Ouro (Golden Signals)
+## 1. SRE Principles and the 4 Golden Signals
 
-Toda API e serviço distribuído deve ser monitorado com base nos **4 Golden Signals** (Google SRE Book):
+Every API and distributed service must be monitored against the **4 Golden Signals** (Google SRE Book):
 
-| Sinal de Ouro | O que mede | Como instrumentar no .NET / OpenTelemetry | Alerta Recomendado |
+| Golden Signal | What it Measures | How to Instrument in .NET / OpenTelemetry | Recommended Alert Threshold |
 | :--- | :--- | :--- | :--- |
-| **Latência (Latency)** | Tempo que uma requisição leva para ser processada. Deve-se medir p50, p95 e p99 separadamente dos erros. | `http.server.request.duration` (Histograma OpenTelemetry) | p95 > 500ms por 5 min |
-| **Tráfego (Traffic)** | Demanda imposta ao sistema (requests/segundo, mensagens consumidas/segundo). | `http.server.active_requests`, `marketpulse.rates.requests_total` | Queda abrupta (> 80%) ou pico anômalo (> 300%) |
-| **Erros (Errors)** | Taxa de requisições que falharam explicitamente (HTTP 5xx) ou semanticamente (falha de negócio/timeout). | Contador de status HTTP (`http.response.status_code >= 500`) | Taxa de erros 5xx > 1% por 3 min |
-| **Saturação (Saturation)** | Quão "cheio" está o serviço (CPU, memória, conexões de banco de dados, tamanho de fila RabbitMQ). | Conexões ativas no pool Npgsql/EF Core, conexões HTTP ativas (`http.client.open_connections`) | Uso de pool de banco > 85% ou fila RabbitMQ acumulando |
+| **Latency** | Time taken to process a request. Must measure p50, p95, and p99 independently of errors. | `http.server.request.duration` (OpenTelemetry Histogram) | p95 > 500ms for 5 min |
+| **Traffic** | Demand placed upon the system (requests/sec, consumed messages/sec). | `http.server.active_requests`, `marketpulse.rates.requests_total` | Sudden drop (> 80%) or anomalous spike (> 300%) |
+| **Errors** | Rate of requests that fail explicitly (HTTP 5xx) or semantically (business rule/timeout). | HTTP status counter (`http.response.status_code >= 500`) | 5xx error rate > 1% for 3 min |
+| **Saturation** | How "full" the service is (CPU, memory, database connection pool, RabbitMQ queue depth). | Active connections in Npgsql/EF Core pool, active HTTP connections (`http.client.open_connections`) | Database pool usage > 85% or RabbitMQ queue growing |
 
 ---
 
-## 2. Os 3 Pilares da Observabilidade com OpenTelemetry (OTel)
+## 2. The 3 Pillars of Observability with OpenTelemetry (OTel)
 
 ```
         ┌──────────────────────────────────────────────────┐
@@ -42,121 +42,121 @@ Toda API e serviço distribuído deve ser monitorado com base nos **4 Golden Sig
  • TraceId / SpanId       • Connection Pools       • ProblemDetails
 ```
 
-### 2.1. Distributed Tracing (Rastreamento Distribuído)
-- **Protocolo**: W3C TraceContext (`traceparent`, `tracestate`).
-- **Implementação**:
-  - `ActivitySource` nativo do .NET (`System.Diagnostics`).
-  - Cada requisição gera um `TraceId` e um `SpanId`.
-  - Chamadas HTTP externas (ex: Frankfurter API) e mensagens do broker (RabbitMQ) propagam automaticamente o cabeçalho `traceparent`.
-  - Spans personalizados marcam tags de negócio usando `activity?.SetTag("key", "value")`.
+### 2.1. Distributed Tracing
+- **Protocol**: W3C TraceContext (`traceparent`, `tracestate`).
+- **Implementation**:
+  - Native .NET `ActivitySource` (`System.Diagnostics`).
+  - Each request generates a `TraceId` and a `SpanId`.
+  - Outbound HTTP calls (e.g. Frankfurter API) and message broker dispatches (RabbitMQ) automatically propagate the `traceparent` header.
+  - Custom spans tag business attributes via `activity?.SetTag("key", "value")`.
 
-### 2.2. Métricas de Negócio e Infraestrutura (Metrics)
-- **Métricas de Infraestrutura**: Coletadas automaticamente via `OpenTelemetry.Instrumentation.AspNetCore` e `OpenTelemetry.Instrumentation.Http`.
-- **Métricas de Negócio**: Instrumentadas via `System.Diagnostics.Metrics.Meter`:
-  - `marketpulse.rates.requests_total`: volume de cotações consultadas.
-  - `marketpulse.watchlist.created_total`: alertas cambiais criados.
-  - `marketpulse.watchlist.deleted_total`: alertas removidos.
+### 2.2. Business and Infrastructure Metrics
+- **Infrastructure Metrics**: Collected automatically via `OpenTelemetry.Instrumentation.AspNetCore` and `OpenTelemetry.Instrumentation.Http`.
+- **Business Metrics**: Instrumented via `System.Diagnostics.Metrics.Meter`:
+  - `marketpulse.rates.requests_total`: volume of queried currency rates.
+  - `marketpulse.watchlist.created_total`: currency watch alert items created.
+  - `marketpulse.watchlist.deleted_total`: currency alerts removed.
 
-### 2.3. Logs Estruturados com Escopo de Correlação (Logging)
-- **Headers de Rastreamento**:
-  - `X-Correlation-Id`: Identificador único de transação (repassado pelo cliente ou gerado na borda).
-  - `X-Trace-Id`: Trace ID do padrão OpenTelemetry W3C.
-- **Logging Scope**: O middleware `RequestTelemetryMiddleware` anexa via `logger.BeginScope`:
+### 2.3. Structured Logging with Correlation Scopes
+- **Tracing Headers**:
+  - `X-Correlation-Id`: Unique transaction identifier (forwarded from client or injected at the edge).
+  - `X-Trace-Id`: OpenTelemetry W3C Trace ID.
+- **Logging Scope**: The `RequestTelemetryMiddleware` attaches via `logger.BeginScope`:
   - `CorrelationId`, `TraceId`, `SpanId`, `RequestMethod`, `RequestPath`.
-- **Exportação via OTLP**: Logs estruturados são enviados via OTLP diretamente para o Grafana Loki ou Aspire Dashboard com `IncludeFormattedMessage = true` e `IncludeScopes = true`.
+- **OTLP Exporting**: Structured logs are streamed via OTLP directly to Grafana Loki or Aspire Dashboard with `IncludeFormattedMessage = true` and `IncludeScopes = true`.
 
 ---
 
-## 3. Cheat Sheet de Consultas para Investigação de Incidentes
+## 3. Query Cheat Sheet for Incident Investigation
 
-### A. Consultas de Métricas no Grafana Mimir / Prometheus (`grafanacloud-bigveranda1683-prom`)
-- **Taxa de Erros 5xx**:
+### A. Metric Queries in Grafana Mimir / Prometheus (`grafanacloud-bigveranda1683-prom`)
+- **5xx Error Rate**:
   ```promql
   (sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m]))) or vector(0)
   ```
-- **Latência P95 por Rota**:
+- **P95 Latency by Route**:
   ```promql
   histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[5m])))
   ```
-- **Throughput por Rota**:
+- **Throughput by Route**:
   ```promql
   sum by (http_route, http_request_method) (rate(http_server_request_duration_seconds_count[1m]))
   ```
 
-### B. Consultas de Logs no Grafana Loki (`grafanacloud-bigveranda1683-logs`)
-- **Buscar Erros e Falhas**:
+### B. Log Queries in Grafana Loki (`grafanacloud-bigveranda1683-logs`)
+- **Search Errors and Exceptions**:
   ```logql
   {service_name="agentic-pipeline-lab-api"} |~ "(?i)fail|error|exception|status 5"
   ```
-- **Buscar por CorrelationId**:
+- **Filter by CorrelationId**:
   ```logql
-  {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <ID_AQUI>"
+  {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <TARGET_ID>"
   ```
-- **Buscar por TraceId**:
+- **Filter by TraceId**:
   ```logql
-  {service_name="agentic-pipeline-lab-api"} |= "<TRACE_ID_AQUI>"
+  {service_name="agentic-pipeline-lab-api"} |= "<TARGET_TRACE_ID>"
   ```
 
-### C. Consultas de Tracing no Grafana Tempo (`grafanacloud-bigveranda1683-traces`)
-- **Traces com Erro**:
+### C. Tracing Queries in Grafana Tempo (`grafanacloud-bigveranda1683-traces`)
+- **Traces with Errors**:
   ```traceql
   { status = error }
   ```
-- **Traces Lentos (> 500ms)**:
+- **Slow Traces (> 500ms)**:
   ```traceql
   { duration > 500ms }
   ```
 
 ---
 
-## 4. Como Conectar ao Grafana Cloud (ex: bigveranda1683.grafana.net)
+## 4. Connecting to Grafana Cloud (e.g. bigveranda1683.grafana.net)
 
-Para enviar telemetria diretamente da aplicação (.NET 9) ou do Docker/Render para a sua conta no Grafana Cloud, configure:
+To ship telemetry directly from the .NET 9 API, Docker, or Render to Grafana Cloud:
 
 ```bash
 OTEL_SERVICE_NAME="agentic-pipeline-lab-api"
 OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-sa-east-1.grafana.net/otlp"
 OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
-OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <TOKEN_BASE64>"
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <BASE64_TOKEN>"
 ```
 
-### Importante sobre o Protocolo HTTP Protobuf no .NET:
-O SDK .NET com `OtlpExportProtocol.HttpProtobuf` requer que cada sinal anexe seu respectivo sufixo de rota:
+### Important regarding HTTP Protobuf in .NET:
+The .NET SDK with `OtlpExportProtocol.HttpProtobuf` requires each telemetry signal to append its respective route suffix:
 - Traces: `{Endpoint}/v1/traces`
-- Métricas: `{Endpoint}/v1/metrics`
+- Metrics: `{Endpoint}/v1/metrics`
 - Logs: `{Endpoint}/v1/logs`
-Essa regra está implementada e garantida em [`Program.cs`](file:///d:/pipeline-dev-automatizador/src/backend/src/App.Api/Program.cs).
+This is handled dynamically in [`Program.cs`](file:///d:/pipeline-dev-automatizador/src/backend/src/App.Api/Program.cs).
 
 ---
 
-## 5. Playbook de Investigação de Incidentes, Debugging e RCA (Root Cause Analysis)
+## 5. Incident Investigation Playbook, Debugging, and RCA
 
-Quando um alerta disparar ou um erro for reportado em produção, siga rigorosamente este roteiro:
+When an alert triggers or an anomaly is reported in production:
 
-### Passo 1: Triagem e Isolamento do Impacto
-1. Acesse o dashboard de **Golden Signals**:
-   - Qual endpoint está falhando? Qual é o código de status retornado (429, 500, 503)?
-   - O volume de erros começou após algum deploy recente ou alteração de banco?
-   - Qual a porcentagem de usuários afetados?
+### Step 1: Triage and Blast Radius Assessment
+1. Open the **Golden Signals** dashboard:
+   - Which endpoint is failing? What HTTP status is returned (429, 500, 503)?
+   - Did error volume correlate with a recent deploy or database migration?
+   - What percentage of users are impacted?
 
-### Passo 2: Localização por CorrelationId ou TraceId
-1. Obtenha o `X-Correlation-Id` ou `X-Trace-Id` do cabeçalho da resposta HTTP ou do relatório do usuário.
-2. No Grafana Loki ou Aspire Dashboard, filtre:
+### Step 2: Correlation via CorrelationId or TraceId
+1. Obtain the `X-Correlation-Id` or `X-Trace-Id` from HTTP response headers or client telemetry.
+2. In Grafana Loki or Aspire Dashboard, filter:
    ```logql
-   {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <ID_AQUI>"
+   {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <TARGET_ID>"
    ```
-3. Abra a aba **Traces** (Tempo) e cole o `TraceId`.
-4. Analise a árvore de spans em cascata:
-   - Qual span demorou mais tempo (gargalo de CPU, I/O ou lock)?
-   - O erro ocorreu no banco PostgreSQL (Npgsql), na chamada externa (Frankfurter HTTP) ou no barramento RabbitMQ?
+3. Open the **Traces** tab (Tempo) and paste the `TraceId`.
+4. Analyze the waterfall trace:
+   - Which span consumed the most time (CPU bottleneck, I/O, lock contention)?
+   - Did failure originate in PostgreSQL (Npgsql), external HTTP (Frankfurter), or RabbitMQ?
 
-### Passo 3: Mitigação Imediata
-- Se for gargalo de recursos: escale a réplica horizontalmente ou ajuste o Rate Limiter.
-- Se for falha de terceiro com cota esgotada: ative o fallback de cache no HybridCache.
-- Se for bug crítico introduzido no último commit: execute o Rollback via Render/Docker com um clique.
+### Step 3: Immediate Mitigation
+- Resource saturation: scale replicas horizontally or adjust Rate Limiter partitions.
+- External dependency failure: verify `HybridCache` fallback activation.
+- Critical bug in recent commit: trigger instant rollback via Render or Docker.
 
-### Passo 4: Post-Mortem Sem Culpa (Blameless RCA)
-Documente em um arquivo Markdown no repositório (`docs/incidents/YYYY-MM-DD-rca.md`):
-1. **Resumo do Incidente**: Horário de início, detecção e resolução (MTTD e MTTR).
-2. **Causa Raiz Técnica**: Por que aconteceu (análise dos 5 Porquês).
-3. **Ações Corretivas**: Criação de novo teste automatizado de integração para prevenir regressão, ajuste de alertas e melhoria no threshold de monitoramento.
+### Step 4: Blameless Root Cause Analysis (RCA)
+Document in Markdown at `docs/incidents/YYYY-MM-DD-rca.md`:
+1. **Incident Summary**: Detection time, start time, resolution time (MTTD, MTTR).
+2. **Technical Root Cause**: 5 Whys analysis.
+3. **Corrective Action Items**: New automated regression integration test, alert tuning, and threshold adjustments.
