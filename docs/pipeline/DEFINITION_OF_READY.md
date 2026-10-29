@@ -1,49 +1,48 @@
-# Definition of Ready (DoR) — Critérios de Prontidão para Desenvolvimento
+# Definition of Ready (DoR) — Readiness Criteria for Development
 
-Nenhuma Task ou Feature pode avançar para a etapa de **Codificação (`backend-csharp-developer` / `frontend-web-developer`)** sem que **100% dos critérios abaixo** estejam marcados e validados na Spec Técnica.
+No Task or Feature may proceed to the **Implementation Phase (`backend-csharp-developer` / `frontend-web-developer`)** without **100% of the criteria below** checked and validated in the Technical Specification.
 
-O objetivo do **DoR** é eliminar completamente o retrabalho, a ambiguidade e o improviso durante a escrita do código.
+The purpose of the **DoR** is to eliminate rework, ambiguity, and guesswork during coding.
 
 ---
 
-## 1. Clareza de Negócio e Escopo (Zero Ambiguidade)
-- [ ] **Objetivo e Valor de Negócio**: Está claro *por que* esta funcionalidade existe e qual problema do usuário (MVP) ela resolve.
-- [ ] **Requisitos Funcionais (RF)**: Todos os fluxos principais (Happy Path), fluxos alternativos e regras de negócio estão enumerados com identificadores únicos (`RF-001`, `RF-002`).
-- [ ] **Open Questions Resolvidas**: Nenhuma dúvida funcional ou de regra de negócio permanece em aberto (`[OPEN QUESTION]` = 0). Se uma decisão foi assumida proativamente, ela está registrada como Premissa Validada ou ADR.
-- [ ] **Critérios de Aceite (BDD / Gherkin)**: Cada requisito possui cenários claros no formato `Dado (Given) / Quando (When) / Então (Then)`, incluindo casos de erro.
+## 1. Business and Scope Clarity (Zero Ambiguity)
+- [ ] **Objective & Business Value**: Clearly articulated *why* this feature exists and what user problem (MVP) it solves.
+- [ ] **Functional Requirements (FR)**: All primary flows (Happy Path), alternative flows, and business edge cases are enumerated with unique identifiers (`FR-001`, `FR-002`).
+- [ ] **Resolved Open Questions**: No open functional questions remain (`[OPEN QUESTION]` = 0). If an engineering default was assumed, it is documented as a Validated Assumption or ADR.
+- [ ] **Acceptance Criteria (BDD / Gherkin)**: Every requirement has explicit scenarios in `Given / When / Then` format, including error cases.
 
-## 2. Arquitetura e Domínio (DDD + Hexagonal + Event-Driven)
-- [ ] **Linguagem Ubíqua**: Termos do domínio (Entidades, Aggregates, Value Objects, Eventos) estão nomeados de forma padronizada e sem sinônimos conflitantes.
-- [ ] **Invariantes de Domínio**: Regras que nunca podem ser violadas dentro do Aggregate Root estão explícitas (ex.: "Um pedido pago não pode ter itens removidos").
-- [ ] **Portas de Entrada e Saída (Hexagonal)**:
-  - Quais Commands/Queries na camada `Application` serão criados?
-  - Quais interfaces de saída (`IRepository`, `ICache`, `IMessageBus`) serão acionadas?
-- [ ] **Eventos e Mensageria (RabbitMQ)**:
-  - Se houver comunicação assíncrona, o nome do evento (`<Context>.<Entity><Action>Event`), payload JSON, fila/exchange, política de **Idempotência**, **Outbox Pattern** e **Dead-Letter Queue (DLQ)** estão definidos.
+## 2. Architecture and Domain Modeling (DDD + Hexagonal + Event-Driven)
+- [ ] **Ubiquitous Language**: Domain concepts (Entities, Aggregates, Value Objects, Events) are named consistently without conflicting synonyms.
+- [ ] **Domain Invariants**: Business invariants protected by the Aggregate Root are explicit (e.g. "A paid order cannot have items removed").
+- [ ] **Inbound & Outbound Ports (Hexagonal)**:
+  - Which Commands/Queries in the `Application` layer will be implemented?
+  - Which outbound ports (`IRepository`, `ICache`, `IMessageBus`) will be invoked?
+- [ ] **Messaging & Events (RabbitMQ)**:
+  - If asynchronous communication is needed, the event name (`<Context>.<Entity><Action>Event`), JSON payload schema, exchange/queue naming, **Idempotency Strategy**, **Transactional Outbox**, and **Dead-Letter Queue (DLQ)** are fully specified.
 
-## 3. Contratos de API REST (Web & Futuro Mobile) e Banco de Dados
-- [ ] **Contrato HTTP (OpenAPI)**:
-  - Método (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`), rota versionada (`/api/v1/...`), Request Body, Query Params e Response DTOs especificados.
-  - Códigos de retorno HTTP mapeados (`200`, `201`, `204`, `400 ProblemDetails`, `401`, `403`, `404`, `409`, `422`, `429`).
-- [ ] **Validações de Input**: Regras exatas do `FluentValidation` (backend) e `Zod` (frontend) listadas (tamanhos máximos, formatos, obrigatoriedade).
-- [ ] **Modelagem de Dados (PostgreSQL)**:
-  - Tabelas, colunas, tipos de dados, chaves primárias (`UUIDv7` / `Guid`), chaves estrangeiras e **índices de performance** definidos.
-  - Impacto em migrations avaliado (compatibilidade retroativa).
+## 3. REST API Contracts (Web & Mobile) and Database Schema
+- [ ] **HTTP Contract (OpenAPI)**:
+  - Method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`), versioned route (`/api/v1/...`), Request Body, Query Params, and Response DTOs specified.
+  - Standard HTTP status codes mapped (`200`, `201`, `204`, `400 ProblemDetails`, `401`, `403`, `404`, `409`, `422`, `429`).
+- [ ] **Input Validation**: Explicit validation rules for `FluentValidation` (backend) and `Zod` (frontend) documented (max lengths, formats, required fields).
+- [ ] **Data Modeling (PostgreSQL)**:
+  - Tables, columns, data types, primary keys (`UUID` / `Guid`), foreign keys, and **performance composite indexes** specified.
+  - Migration backwards-compatibility evaluated.
 
-## 4. Requisitos Não Funcionais (RNF), Custo e Segurança (OWASP)
-- [ ] **Autenticação e Autorização (Supabase Auth)**:
-  - Quais roles/claims do JWT do Supabase têm permissão para acessar este recurso?
-  - Como é garantida a proteção contra **BOLA / IDOR** (ex.: validar que o `sub` / `user_id` do token é dono do recurso)?
-- [ ] **Estratégia de Cache**:
-  - Os dados serão cacheados? Qual a chave de cache, TTL (Time-To-Live) e qual evento/ação invalida esse cache?
-- [ ] **Previsão de Falhas e Mitigação**:
-  - O que acontece se o banco cair, se o RabbitMQ atrasar, se o usuário clicar duas vezes (concorrência otimista / `xmin` / `Idempotency-Key`)?
-- [ ] **Alinhamento de Custo MVP**: A solução utiliza recursos nativos da stack ou free-tier aprovado sem introduzir serviços pagos desnecessários.
+## 4. Non-Functional Requirements (NFR), Cost, and Security (OWASP)
+- [ ] **Authentication & Authorization (Supabase Auth)**:
+  - Which JWT roles/claims are authorized to access this resource?
+  - How is **BOLA / IDOR** prevented (e.g. validating that token `sub` / `user_id` strictly owns the record)?
+- [ ] **Caching Strategy**:
+  - Are results cached? What are the cache key, TTL, and cache invalidation triggers?
+- [ ] **Failure Forecasting and Mitigation**:
+  - What happens if the database is unavailable, RabbitMQ is delayed, or a user double-clicks (optimistic concurrency / `Idempotency-Key`)?
+- [ ] **MVP Cost Alignment**: The solution utilizes free-tier or open-source stack capabilities without introducing unnecessary paid services.
 
-## 5. Plano de Testes e Decomposição de Tasks
-- [ ] **Plano de Testes Mapeado**:
-  - Lista dos testes de unidade (`Domain` e `Application` handlers/validators) que serão escritos.
-  - Lista dos testes de integração (`Api` + `PostgreSQL` + `RabbitMQ` / `MSW` no frontend) que serão escritos.
-- [ ] **Tasks Atômicas e Independentes**: O trabalho foi fatiado em tasks pequenas e sequenciais, onde cada task tem escopo claro de arquivos a criar/modificar e comando exato de verificação.
-- [ ] **Padrão de Idioma Técnico (EN-US)**: Toda a especificação técnica (`docs/specs/`), histórias de usuário, critérios de aceitação, termos de linguagem ubíqua e descrição de tasks foram redigidos estritamente em inglês (EN-US).
-
+## 5. Test Plan and Atomic Task Decomposition
+- [ ] **Mapped Test Plan**:
+  - List of unit tests (`Domain` invariants and `Application` handlers/validators) to be written.
+  - List of integration tests (`Api` + `PostgreSQL` + `RabbitMQ` / `MSW` for frontend) to be written.
+- [ ] **Atomic and Independent Tasks**: Work is broken into small, sequential tasks with clear file boundaries and verification commands.
+- [ ] **Mandatory Technical Language Standard (EN-US)**: The technical specification (`docs/specs/`), user stories, acceptance criteria, ubiquitous language terms, and task descriptions are strictly written in technical English (EN-US).

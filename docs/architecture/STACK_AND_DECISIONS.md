@@ -1,118 +1,115 @@
-# Arquitetura Oficial, Stack Tecnológica e Decisões de Mercado (MVP Low-Cost & Scale-Ready)
+# Official Architecture, Technology Stack, and Industry Decisions (Low-Cost MVP & Scale-Ready)
 
-Este documento consolida a análise de mercado e as decisões arquiteturais padrão desta esteira agêntica. Ele serve como fonte da verdade para todos os agentes para evitar re-trabalho ou escolhas tecnológicas inconsistentes.
+This document consolidates market analysis and standard architectural decisions for this agentic pipeline. It serves as the single source of truth for all agents to prevent rework, guesswork, or architectural drift.
 
 ---
 
-## 1. Visão Geral da Arquitetura
+## 1. Architectural Overview
 
 ```mermaid
 flowchart TB
-    subgraph Clients["Clientes (Driving Consumers)"]
-        Web["Frontend Monolito Web<br/>(Next.js + TypeScript + TanStack Query)"]
-        Mobile["Futuro App Mobile<br/>(Consome mesma REST API OpenAPI v1)"]
+    subgraph Clients["Clients (Driving Consumers)"]
+        Web["Web Monolith Frontend<br/>(Next.js + TypeScript + TanStack Query)"]
+        Mobile["Future Mobile App<br/>(Consumes same OpenAPI v1 REST API)"]
     end
 
-    subgraph SaaS_FreeTier["Serviços Delegados (Low Cost / Free Tier)"]
+    subgraph SaaS_FreeTier["Delegated Services (Low Cost / Free Tier)"]
         SupabaseAuth["Supabase Auth<br/>(OAuth, JWT, MFA, JWKS)"]
     end
 
-    subgraph Backend["Backend Monolito Modular Hexagonal (.NET 9 / C# Minimal API)"]
+    subgraph Backend["Modular Hexagonal Monolith (.NET 9 / C# Minimal API)"]
         API["Driving Adapter: Minimal API<br/>(Endpoints, Rate Limit, ProblemDetails, OpenAPI)"]
         App["Application Layer (Use Cases)<br/>(Commands, Queries, FluentValidation, Result Pattern)"]
         Domain["Domain Layer (DDD Core)<br/>(Aggregates, Value Objects, Domain Events, Ports)"]
         Infra["Driven Adapters: Infrastructure<br/>(EF Core, MassTransit, HybridCache, Auth JWT)"]
     end
 
-    subgraph Data_Messaging["Persistência, Cache e Mensageria"]
-        PG[("PostgreSQL<br/>(Dados + Outbox Table)")]
+    subgraph Data_Messaging["Persistence, Cache, and Messaging"]
+        PG[("PostgreSQL<br/>(Data + Outbox Table)")]
         Cache[("HybridCache<br/>(L1 Memory + L2 Redis/PG)")]
         RMQ[["RabbitMQ<br/>(Exchanges, Queues, DLQ)"]]
     end
 
-    Web -->|Login / Sessão| SupabaseAuth
-    Mobile -.->|Login / Sessão| SupabaseAuth
+    Web -->|Login / Session| SupabaseAuth
+    Mobile -.->|Login / Session| SupabaseAuth
     Web -->|HTTPS REST + Bearer JWT| API
     Mobile -.->|HTTPS REST + Bearer JWT| API
-    API -->|Valida JWKS Assimétrico| SupabaseAuth
+    API -->|Validates Asymmetric JWKS| SupabaseAuth
     API --> App
     App --> Domain
-    Infra -.->|Implementa Ports| Domain
-    Infra -.->|Implementa Ports| App
-    Infra -->|Leitura/Escrita + Transactional Outbox| PG
+    Infra -.->|Implements Ports| Domain
+    Infra -.->|Implements Ports| App
+    Infra -->|Read/Write + Transactional Outbox| PG
     Infra -->|GetOrCreateAsync| Cache
-    Infra -->|Publish / Consume Idempotente| RMQ
+    Infra -->|Idempotent Publish / Consume| RMQ
 ```
 
 ---
 
-## 2. Estratégia FinOps: Menor Custo para MVP com Escala Garantida
+## 2. FinOps Strategy: Minimum Cost for MVP with Guaranteed Scale
 
-Para lançar um MVP com custo próximo de **US\$ 0 a US\$ 5/mês** sem sacrificar arquitetura enterprise que escala para centenas de milhares de usuários:
+To launch an MVP with costs between **US\$ 0 and US\$ 5/month** without sacrificing enterprise architecture capable of scaling to hundreds of thousands of users:
 
-| Componente | Escolha Recomendada | Por que usar no MVP (Buy over Build) | Custo Inicial (MVP) | Caminho de Escala |
+| Component | Recommended Choice | Why use in MVP (Buy over Build) | Initial Cost (MVP) | Scaling Path |
 | :--- | :--- | :--- | :--- | :--- |
-| **Autenticação & Autorização** | **Supabase Auth** | Elimina semanas criando hash de senha, recuperação de e-mail, OAuth social, MFA e refresh tokens. Fornece JWT assinado (JWKS) validado localmente pelo C# em `< 1ms` sem custo de rede por request. | **Grátis** (até 50.000 MAUs no Free Tier) | Pro Plan ou migração transparente de JWKS para qualquer OIDC compatível. |
-| **Banco de Dados Relacional** | **PostgreSQL** (Supabase DB / Neon / Container) | Padrão ouro open-source. Suporta JSONB, Full-Text Search, índices parciais e Row-Level Security (RLS). | **Grátis** (Supabase/Neon Free Tier ou VPS única) | Read Replicas, Connection Pooling (Supavisor/PgBouncer) e particionamento. |
-| **Mensageria (Event-Driven)** | **RabbitMQ** via **MassTransit** | Desacopla processamento pesado da API HTTP. Com MassTransit + EF Core Outbox, garante entrega *At-Least-Once* sem perder mensagens. | **Grátis** (CloudAMQP Little Lemur ou Docker na mesma VPS) | Cluster RabbitMQ dedicado ou troca de 1 linha no MassTransit para AWS SQS / Azure Service Bus. |
-| **Cache** | **.NET `HybridCache`** (`IMemoryCache` L1 + opcional L2) | Evita pagar Redis dedicado no dia 1 usando memória local (L1) com proteção nativa contra *Cache Stampede*, já preparado para plugar Redis (Upstash free tier) como L2. | **Grátis** (In-Memory L1 + Upstash Free Tier) | Redis Cluster dedicado sem alterar uma única linha na camada `Application`. |
-| **CI/CD & Segurança** | **GitHub Actions + CodeQL + Trivy + Dependabot** | Automação completa de build, testes com Testcontainers, SAST e auditoria de vulnerabilidades nativos do GitHub. | **Grátis** (2.000 min/mês em repos privados ou ilimitado em públicos) | GitHub Runners auto-hospedados se necessário. |
+| **Authentication & Authorization** | **Supabase Auth** | Eliminates weeks building password hashing, email recovery, social OAuth, MFA, and refresh token rotation. Provides signed JWTs (JWKS) validated locally in C# in `< 1ms` without network roundtrips. | **Free** (up to 50,000 MAUs on Free Tier) | Pro Plan or transparent JWKS migration to any OIDC-compliant provider. |
+| **Relational Database** | **PostgreSQL** (Supabase DB / Neon / Container) | The open-source gold standard. Supports JSONB, Full-Text Search, partial indexes, and Row-Level Security (RLS). | **Free** (Supabase/Neon Free Tier or single VPS) | Read Replicas, Connection Pooling (Supavisor/PgBouncer), and partitioning. |
+| **Messaging (Event-Driven)** | **RabbitMQ** via **MassTransit** | Decouples resource-intensive work from the HTTP API. With MassTransit + EF Core Outbox, guarantees *At-Least-Once* delivery with zero message loss. | **Free** (CloudAMQP Little Lemur or Docker container) | Dedicated RabbitMQ cluster or 1-line MassTransit driver swap to AWS SQS / Azure Service Bus. |
+| **Caching** | **.NET `HybridCache`** (`IMemoryCache` L1 + optional L2) | Avoids paying for dedicated Redis on Day 1 by leveraging in-memory L1 with built-in protection against *Cache Stampede*, ready to plug Upstash Redis free tier as L2. | **Free** (In-Memory L1 + Upstash Free Tier) | Dedicated Redis Cluster without changing a single line in the `Application` layer. |
+| **CI/CD & Security** | **GitHub Actions + CodeQL + Trivy + Dependabot** | Complete build automation, Testcontainers integration testing, SAST, and automated vulnerability scanning native to GitHub. | **Free** (2,000 min/mo in private repos or unlimited in public) | Self-hosted GitHub Runners if needed. |
 
 ---
 
-## 3. Análise de Mercado: Por que esta Stack de Frontend para Consumo de API?
+## 3. Market Analysis: Why this Frontend Stack for API Consumption?
 
-O usuário solicitou: *"frontend preciso que voce busque o que o mercado recomenda para uso de API, o que tem mais de informacao disponivel. testes precisam existir"*.
+Industry standard pattern for consuming REST APIs: **Next.js (React) + TypeScript + TanStack Query v5 + OpenAPI TypeScript + Vitest/Playwright**.
 
-### Escolha Vencedora do Mercado: **Next.js (React) + TypeScript + TanStack Query v5 + OpenAPI TypeScript + Vitest/Playwright**
-
-1. **Maior Ecossistema e Documentação do Mundo**:
-   - **React + TypeScript** detém mais de 70% do mercado enterprise frontend e a maior base de conhecimento, exemplos, bibliotecas e suporte para LLMs/Agentes.
-2. **Padrão Ouro para Consumo de REST API (`TanStack Query v5` + `openapi-fetch`)**:
-   - Em vez de usar `useEffect` + `axios/fetch` manual (que gera bugs de race condition, estados de loading duplicados e falta de cache), o **TanStack Query** gerencia estado do servidor declarativamente (`useQuery`, `useMutation`), com cache inteligente, retries automáticos, paginação, *optimistic updates* e revalidação em foco.
-   - Combinado com **`openapi-typescript`**, o frontend lê o contrato OpenAPI gerado pela Minimal API C# e cria todos os tipos TypeScript automaticamente. Se o backend mudar um campo em C#, o build do frontend avisa no mesmo segundo em tempo de compilação!
-3. **Preparação para Futuro App Mobile**:
-   - Como a regra de negócio fica 100% no Backend C# via REST API padronizada e o Frontend consome via `TanStack Query` + `Zod`, quando o App Mobile for criado (ex.: **React Native / Expo**), **100% dos hooks de API, schemas Zod, tipos OpenAPI e lógica de autenticação Supabase podem ser reaproveitados diretamente**.
-4. **Pirâmide de Testes Frontend Consolidada**:
-   - **Vitest + React Testing Library**: Execução ultrarrápida para componentes e hooks.
-   - **MSW (Mock Service Worker)**: Intercepta requisições na camada de rede durante os testes, simulando a API C# com fidelidade total sem mocks frágeis de código.
-   - **Playwright**: Testes End-to-End reais automatizados no navegador.
+1. **Largest Global Ecosystem & Knowledge Base**:
+   - **React + TypeScript** holds over 70% of the enterprise frontend market, offering the most extensive documentation, library ecosystem, and LLM reasoning accuracy.
+2. **Gold Standard for REST API Consumption (`TanStack Query v5` + `openapi-fetch`)**:
+   - Instead of fragile `useEffect` + manual `axios/fetch` loops (which introduce race conditions, duplicate loading states, and cache bugs), **TanStack Query** manages server state declaratively (`useQuery`, `useMutation`), offering smart caching, automatic retries, pagination, *optimistic updates*, and window focus revalidation.
+   - Combined with **`openapi-typescript`**, the frontend consumes the OpenAPI contract generated by the C# Minimal API and automatically derives all TypeScript types. If the backend changes a field in C#, the frontend build catches it immediately at compile time.
+3. **Future Mobile App Readiness**:
+   - Because business logic resides 100% in the C# Backend via standardized REST APIs and the Frontend consumes via `TanStack Query` + `Zod`, when a Mobile App is built (e.g. **React Native / Expo**), **100% of API hooks, Zod schemas, OpenAPI types, and Supabase auth logic can be reused directly**.
+4. **Consolidated Frontend Testing Pyramid**:
+   - **Vitest + React Testing Library**: Ultra-fast execution for components and hooks.
+   - **MSW (Mock Service Worker)**: Intercepts network requests during tests, simulating the C# API with complete fidelity without fragile mock code.
+   - **Playwright**: Real End-to-End browser test automation.
 
 ---
 
-## 4. Estrutura de Pastas Padrão do Repositório (Monorepo Monolito Modular)
+## 4. Repository Topology (Modular Monolith Monorepo)
 
-Quando a esteira inicializar ou organizar o código do projeto, esta é a topologia recomendada:
+Standard repository layout initialized and maintained by the pipeline:
 
 ```text
 /
-├── .agents/                          # Inteligência Agêntica (Agentes, Skills, Hooks)
-├── .github/                          # Workflows CI/CD, Templates de PR, Dependabot
-├── docs/                             # Documentação Viva da Esteira
-│   ├── architecture/                 # Decisões Arquiteturais (ADRs) e Diagramas
-│   ├── pipeline/                     # DoR, DoD e Guias da Esteira
-│   ├── specs/                        # Especificações Técnicas por Feature (RF, RNF, Contratos)
-│   └── templates/                    # Templates padronizados
+├── .agents/                          # Agentic Intelligence (Agents, Skills, Hooks)
+├── .github/                          # CI/CD Workflows, PR Templates, Dependabot
+├── docs/                             # Living Pipeline Documentation
+│   ├── architecture/                 # Architectural Decisions (ADRs) and Diagrams
+│   ├── pipeline/                     # DoR, DoD, and Pipeline Guides
+│   ├── specs/                        # Technical Specs by Feature (FR, NFR, Contracts)
+│   └── templates/                    # Standardized Templates
 ├── src/
-│   ├── backend/                      # Solução .NET (C# Minimal API + Hexagonal + DDD)
-│   │   ├── Directory.Build.props     # Regras globais C# (Nullable, TreatWarningsAsErrors, Analyzers)
+│   ├── backend/                      # .NET Solution (C# Minimal API + Hexagonal + DDD)
+│   │   ├── Directory.Build.props     # Global C# Rules (Nullable, TreatWarningsAsErrors, Analyzers)
 │   │   ├── src/
-│   │   │   ├── App.Domain/           # Core puro: Aggregates, Value Objects, Domain Events, Ports
+│   │   │   ├── App.Domain/           # Pure Core: Aggregates, Value Objects, Domain Events, Ports
 │   │   │   ├── App.Application/      # Use Cases: Commands, Queries, Validators, Result Pattern
 │   │   │   ├── App.Infrastructure/   # Adapters: EF Core (Postgres), MassTransit (RabbitMQ), Cache, Auth
 │   │   │   └── App.Api/              # Entrypoint: Minimal APIs, Endpoints, Middlewares, OpenAPI
 │   │   └── tests/
 │   │       ├── App.UnitTests/        # xUnit + FluentAssertions + NSubstitute (Domain & Application)
-│   │       ├── App.ArchTests/        # NetArchTest (Garante regras da Arquitetura Hexagonal)
+│   │       ├── App.ArchTests/        # NetArchTest (Enforces Hexagonal Architecture Rules)
 │   │       └── App.IntegrationTests/ # WebApplicationFactory + Testcontainers (Postgres + RabbitMQ)
-│   └── frontend/                     # Monolito Web (Next.js / React + TypeScript)
+│   └── frontend/                     # Web Monolith (Next.js / React + TypeScript)
 │       ├── src/
-│       │   ├── app/                  # Rotas e Layouts (App Router)
-│       │   ├── components/           # UI Components (shadcn/ui + componentes de domínio)
-│       │   ├── features/             # Módulos por domínio (hooks TanStack Query, forms Zod, views)
-│       │   ├── lib/                  # Cliente API tipado (openapi-fetch), cliente Supabase, utils
-│       │   └── test/                 # Setup Vitest, MSW handlers e factories
-│       └── e2e/                      # Testes End-to-End com Playwright
-└── docker-compose.yml                # Infra local: PostgreSQL + RabbitMQ (com Management UI)
+│       │   ├── app/                  # Routes and Layouts (App Router)
+│       │   ├── components/           # UI Components (shadcn/ui + Domain Components)
+│       │   ├── features/             # Feature Modules (TanStack Query hooks, Zod forms, views)
+│       │   ├── lib/                  # Typed API Client (openapi-fetch), Supabase Client, utils
+│       │   └── test/                 # Vitest Setup, MSW handlers and factories
+│       └── e2e/                      # End-to-End Tests with Playwright
+└── docker-compose.yml                # Local Infra: PostgreSQL + RabbitMQ (with Management UI)
 ```
-

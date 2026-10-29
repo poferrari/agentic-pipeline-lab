@@ -1,34 +1,34 @@
 ---
 name: frontend-api-architecture
 description: >-
-  Use esta skill sempre que for arquitetar, criar ou modificar o Frontend Web.
-  Implementa as melhores práticas recomendadas pelo mercado para consumo de REST APIs:
-  Next.js (App Router) / React + TypeScript estrito, TanStack Query v5, sincronização automática
-  OpenAPI, React Hook Form + Zod, Supabase Auth e testes automatizados (Vitest, Testing Library, MSW, Playwright).
+  Use this skill whenever architecting, creating, or modifying the Web Frontend.
+  Implements industry best practices for REST API consumption:
+  Next.js (App Router) / React + strict TypeScript, TanStack Query v5, automated OpenAPI
+  synchronization, React Hook Form + Zod, Supabase Auth, and automated testing (Vitest, Testing Library, MSW, Playwright).
 ---
 
-# Arquitetura Frontend Recomendada de Mercado para Consumo de API (`frontend-api-architecture`)
+# Modern Frontend Architecture for API Consumption (`frontend-api-architecture`)
 
-Esta skill consolida o padrão mais robusto, documentado e testável do mercado para aplicações Frontend que consomem uma REST API C# e compartilham autenticação com **Supabase Auth**.
+This skill establishes the most robust, documented, and testable pattern for Frontend applications consuming a C# Minimal REST API with shared authentication via **Supabase Auth**.
 
 ---
 
-## 1. Princípios Arquiteturais (Clean Code, KISS & Mobile-Ready)
+## 1. Architectural Principles (Clean Code, KISS & Mobile-Ready)
 
-1. **Separação Estrita entre Estado de Servidor e Estado de UI**:
-   - **Estado de Servidor (REST API C#)**: Gerenciado **100% pelo TanStack Query v5**. Proibido guardar respostas de API em `useState` ou Redux/Zustand global.
-   - **Estado de UI Local**: `useState` / `useReducer` simples (ou URL Search Params para filtros, paginação e ordenação — facilita compartilhamento de links e SSR).
-2. **Tipagem End-to-End Sem Redundância (`OpenAPI -> TypeScript`)**:
-   - Gere os tipos a partir do Swagger/OpenAPI da Minimal API C#:
+1. **Strict Separation Between Server State and UI State**:
+   - **Server State (C# REST API)**: Managed **100% via TanStack Query v5**. Never store API responses in manual `useState` or global Redux/Zustand stores.
+   - **Local UI State**: Simple `useState` / `useReducer` (or URL Search Params for filters, pagination, and sorting — enabling easy link sharing and SSR).
+2. **End-to-End Type Safety Without Redundancy (`OpenAPI -> TypeScript`)**:
+   - Generate types directly from the C# Minimal API OpenAPI spec:
      `npx openapi-typescript http://localhost:5000/openapi/v1.json -o src/lib/api/schema.d.ts`
-3. **Código Reaproveitável para Futuro App Mobile**:
-   - Mantenha a camada `features/<dominio>/api/` e `features/<dominio>/schemas/` livre de dependências exclusivas do DOM (`window`, `document`), permitindo reutilização direta em um futuro app **React Native / Expo**.
+3. **Reusable Code for Future Mobile Apps**:
+   - Keep the `features/<domain>/api/` and `features/<domain>/schemas/` layers free of DOM-specific dependencies (`window`, `document`), enabling seamless reuse in future **React Native / Expo** apps.
 
 ---
 
-## 2. Padrão de Cliente HTTP + Supabase Auth + ProblemDetails
+## 2. HTTP Client Pattern + Supabase Auth + ProblemDetails
 
-Crie um wrapper limpo e tipado (`src/lib/api/client.ts`) que injeta automaticamente o JWT do Supabase e converte erros RFC 7807 (`ProblemDetails`) da Minimal API C#:
+Implement a clean, typed wrapper (`src/lib/api/client.ts`) that automatically injects the Supabase JWT and converts RFC 7807 (`ProblemDetails`) errors returned by the C# Minimal API:
 
 ```typescript
 import { createBrowserClient } from '@supabase/ssr';
@@ -85,9 +85,9 @@ export async function apiFetch<TResponse>(
 
 ---
 
-## 3. Padrão de Query Key Factory & Hooks (`TanStack Query v5`)
+## 3. Query Key Factory & Hooks Pattern (`TanStack Query v5`)
 
-Em cada módulo (`src/features/<feature>/api/`), padronize as chaves de cache e mutações:
+In each feature module (`src/features/<feature>/api/`), standardize cache keys and mutations:
 
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -105,7 +105,7 @@ export function useResources(page = 1, pageSize = 20) {
   return useQuery({
     queryKey: resourceKeys.list({ page, pageSize }),
     queryFn: () => apiFetch<PagedResponse<ResourceDto>>(`/api/v1/resources?page=${page}&pageSize=${pageSize}`),
-    staleTime: 1000 * 60, // 1 minuto
+    staleTime: 1000 * 60, // 1 minute
   });
 }
 
@@ -126,10 +126,9 @@ export function useCreateResource() {
 
 ---
 
-## 4. Estratégia Obrigatória de Testes Frontend (`Vitest + Testing Library + MSW`)
+## 4. Mandatory Frontend Testing Strategy (`Vitest + Testing Library + MSW`)
 
-Nenhum componente ou hook de API está pronto sem testes automatizados cobrindo:
-1. **Estado de carregamento (`loading`) e renderização com sucesso (`200 OK`)** interceptado via **MSW (`http.get`, `http.post`)**.
-2. **Validação de formulário (`Zod`)** impedindo submissão inválida antes de chamar a API.
-3. **Tratamento resiliente de erro da API (`400/422 ProblemDetails` ou `500`)**, exibindo feedback claro ao usuário.
-
+No component or API hook is complete without automated tests covering:
+1. **Loading state (`isLoading`) and successful rendering (`200 OK`)** intercepted via **MSW (`http.get`, `http.post`)**.
+2. **Form validation (`Zod`)** preventing invalid submissions before calling the API.
+3. **Resilient API error handling (`400/422 ProblemDetails` or `500`)**, displaying clear feedback to the user.

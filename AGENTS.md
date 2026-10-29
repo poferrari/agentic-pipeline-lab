@@ -1,115 +1,114 @@
-# Regras Globais da Esteira de Desenvolvimento Agêntico (`AGENTS.md`)
+# Global Agentic Development Pipeline Rules (`AGENTS.md`)
 
-Você opera dentro de uma **Esteira de Desenvolvimento de Software Agêntica Autônoma** de padrão Enterprise, otimizada para **MVP de Baixo Custo, Alta Escalabilidade, Qualidade Rigorosa e Segurança (OWASP)**.
-Qualquer estrutura de projeto ou contexto fornecido nesta pasta deve ser processado seguindo rigorosamente este protocolo, sem ambiguidades, sem redundâncias e com foco absoluto em engenharia de software moderna.
+You operate within an Enterprise-grade **Autonomous Agentic Software Development Pipeline**, optimized for **Low-Cost MVP, High Scalability, Rigorous Quality, and Security (OWASP)**.
+Any project structure or context provided in this workspace must be processed strictly following this protocol, without ambiguity, redundancy, or deviation from modern software engineering standards.
 
 ---
 
-## 1. Princípios Fundamentais de Engenharia e Código
+## 1. Fundamental Engineering and Coding Principles
 
 1. **KISS (Keep It Simple, Stupid) & YAGNI (You Aren't Gonna Need It)**:
-   - Construa apenas o que é necessário para resolver o problema atual com excelência. Proibido over-engineering, abstrações prematuras ou camadas inúteis.
-2. **Clean Code & Legibilidade**:
-   - Código é lido muito mais vezes do que escrito. Nomes de variáveis, métodos e classes devem revelar intenção clara em inglês técnico estrito (EN-US).
-   - Métodos curtos (idealmente < 20 linhas), responsabilidade única (SRP/SOLID), early-returns (Guard Clauses) ao invés de `if/else` aninhados.
-3. **Zero Ambiguidade & Proatividade**:
-   - **NUNCA** codifique sobre premissas não validadas ou requisitos ambíguos.
-   - Durante o planejamento e análise, levante **todas as Open Questions**, antecipe edge cases, falhas de rede, concorrência, limites de cota e vulnerabilidades antes de escrever código.
-4. **Custo Mínimo para MVP e Escala (Buy/Delegate over Build)**:
-   - Delegue commodities para ferramentas validadas de mercado com generosos Free Tiers:
-     - **AuthN / AuthZ**: **Supabase Auth** (validação de JWT assimétrico JWKS no backend C# e SDK nativo no frontend). Nunca implemente tabelas de senhas ou fluxos de OAuth/MFA do zero.
-     - **Banco de Dados**: **PostgreSQL** (via Supabase ou Neon/Docker local) com Row-Level Security (RLS) ou isolamento estrito na aplicação.
-     - **Mensageria**: **RabbitMQ** (CloudAMQP no free tier ou container local).
-     - **Cache**: `HybridCache` (.NET 9+) combinando `IMemoryCache` (L1 gratuito) e Redis/Upstash ou Postgres (L2 opcional quando necessário).
-5. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
-   - **TODO e qualquer artefato gerado ou mantido no repositório DEVE ser estritamente em INGLÊS (EN-US)**:
-     - Código-fonte (nomes de projetos, namespaces, classes, métodos, records, enums, propriedades, variáveis).
-     - Comentários de código e docstrings.
-     - Mensagens de log estruturado e traces OpenTelemetry.
-     - Testes automatizados (nomes de classes de teste, métodos de teste `Given_When_Then`, asserções e fixtures).
-     - Documentação técnica (`docs/specs/`, `docs/architecture/`, ADRs, checklists de DoR/DoD e Tasks).
-     - Mensagens de commit Git (formato Conventional Commits em EN-US).
-     - Títulos e descrições de Pull Requests e Issues no GitHub.
-   - *Nota de Comunicação*: A interação conversacional no chat direto com o usuário é mantida no idioma de preferência do usuário (Português), mas absolutamente **nenhum texto em português deve constar no código-fonte, testes, documentação do repositório, commits ou PRs**.
+   - Build only what is necessary to solve the current problem with excellence. Avoid over-engineering, premature abstractions, or useless layers.
+2. **Clean Code & Readability**:
+   - Code is read much more often than written. Variable, method, and class names must reveal clear intent in strict technical English (EN-US).
+   - Short methods (ideally < 20 lines), Single Responsibility (SRP/SOLID), early-returns (Guard Clauses) instead of nested `if/else` blocks.
+3. **Zero Ambiguity & Proactivity**:
+   - **NEVER** write code based on unvalidated assumptions or ambiguous requirements.
+   - During planning and analysis, raise **all Open Questions**, anticipate edge cases, network failures, concurrency, quota limits, and security vulnerabilities before writing code.
+4. **Minimum Cost for MVP and Scale (Buy/Delegate over Build)**:
+   - Delegate commodities to market-validated services with generous Free Tiers:
+     - **AuthN / AuthZ**: **Supabase Auth** (asymmetric JWKS JWT validation in backend C# and native SDK in frontend). Never implement password tables or custom OAuth/MFA flows from scratch.
+     - **Database**: **PostgreSQL** (via Supabase or Neon/local Docker) with Row-Level Security (RLS) or strict application-level isolation.
+     - **Messaging**: **RabbitMQ** (CloudAMQP free tier or local container).
+     - **Cache**: `HybridCache` (.NET 9+) combining `IMemoryCache` (free L1 in-memory) and Redis/Upstash or Postgres (optional L2 when required).
+5. **Mandatory Technical Language Standard (English EN-US)**:
+   - **ALL artifacts generated or maintained in the repository MUST be strictly in ENGLISH (EN-US)**:
+     - Source code (project names, namespaces, classes, methods, records, enums, properties, variables).
+     - Code comments and docstrings.
+     - Structured log messages and OpenTelemetry traces.
+     - Automated tests (test class names, `Given_When_Then` test methods, assertions, and fixtures).
+     - Technical documentation (`docs/specs/`, `docs/architecture/`, ADRs, DoR/DoD checklists, and Tasks).
+     - Git commit messages (Conventional Commits in EN-US).
+     - GitHub Pull Request and Issue titles and descriptions.
+   - *Communication Note*: Conversational interaction in the chat directly with the user remains in the user's preferred language (Portuguese), but **no Portuguese text may appear in source code, tests, repository documentation, commits, or PRs**.
 
 ---
 
-## 2. Arquitetura e Stack Tecnológica Oficial
+## 2. Official Architecture and Technology Stack
 
-### 2.1. Backend: Monolito Modular / Hexagonal em C# (.NET 8/9+)
-- **Estilo Arquitetural**: **Arquitetura Hexagonal (Ports & Adapters)** aliada a **Domain-Driven Design (DDD)** e **Event-Driven Architecture (EDA)**.
-- **API**: **ASP.NET Core Minimal APIs** (código mínimo, alta performance, pronto para Web e futuro App Mobile).
-  - Endpoints organizados via padrão `IEndpoint` / `MapGroup`, retornando sempre `TypedResults` (`IResult`) e `ProblemDetails` (RFC 7807) para erros padronizados.
-  - Documentação **OpenAPI / Scalar / Swagger** gerada estaticamente ou em runtime com tipagem forte para consumo do Frontend e Mobile.
-- **Divisão Estrita de Camadas (Projetos ou Pastas Isoladas)**:
-  1. `Domain` (Core): Entidades, Aggregate Roots, Value Objects (`readonly record struct` / `record`), Domain Events, Domain Errors e Interfaces de Portas de Saída (Repositories). **Zero dependências de frameworks externos** (sem EF Core, sem HTTP, sem RabbitMQ).
-  2. `Application` (Use Cases): Commands, Queries, Handlers (CQRS leve sem sobrecarga desnecessária), DTOs/Contracts, Input Validators (**FluentValidation**), Output Ports. Retorno obrigatório via **Result Pattern** (`Result<T>` / `Error`) para fluxos de negócio — nunca lance exceções para erros de validação ou regras de domínio.
-  3. `Infrastructure` (Driven Adapters): Persistência com **Entity Framework Core (PostgreSQL / Npgsql)** + **Dapper** (para queries de leitura complexas se necessário), **MassTransit** com **RabbitMQ** (incluindo **Transactional Outbox Pattern** e consumidores idempotentes), Cache (`HybridCache`), integração com **Supabase JWT**.
-  4. `Api` (Driving Adapter): Minimal APIs, Middlewares globais (Exception Handler -> ProblemDetails, CorrelationId, Rate Limiting, CORS estrito, Security Headers), HealthChecks (`/health/live`, `/health/ready`).
+### 2.1. Backend: Modular / Hexagonal Monolith in C# (.NET 8/9+)
+- **Architectural Style**: **Hexagonal Architecture (Ports & Adapters)** combined with **Domain-Driven Design (DDD)** and **Event-Driven Architecture (EDA)**.
+- **API**: **ASP.NET Core Minimal APIs** (minimal code, high throughput, ready for Web and future Mobile clients).
+  - Endpoints organized via `IEndpoint` / `MapGroup` pattern, returning typed results (`TypedResults` / `IResult`) and standardized `ProblemDetails` (RFC 7807) for errors.
+  - Native **OpenAPI / Scalar / Swagger** documentation generated statically or at runtime with strong typing for consumption by Frontend and Mobile.
+- **Strict Layer Separation (Isolated Projects or Folders)**:
+  1. `Domain` (Core): Entities, Aggregate Roots, Value Objects (`readonly record struct` / `record`), Domain Events, Domain Errors, and Outbound Port Interfaces (Repositories). **Zero external framework dependencies** (no EF Core, no HTTP, no RabbitMQ).
+  2. `Application` (Use Cases): Commands, Queries, Handlers (lightweight CQRS without unnecessary overhead), DTOs/Contracts, Input Validators (**FluentValidation**), Output Ports. Mandatory returns via **Result Pattern** (`Result<T>` / `Error`) for business workflows — never throw exceptions for validation or domain business rules.
+  3. `Infrastructure` (Driven Adapters): Persistence with **Entity Framework Core (PostgreSQL / Npgsql)** + **Dapper** (for complex read queries when needed), **MassTransit** with **RabbitMQ** (including **Transactional Outbox Pattern** and idempotent consumers), Cache (`HybridCache`), and **Supabase JWT** validation.
+  4. `Api` (Driving Adapter): Minimal APIs, global middlewares (Exception Handler -> ProblemDetails, CorrelationId, Rate Limiting, strict CORS, Security Headers), HealthChecks (`/health/live`, `/health/ready`).
 
-### 2.2. Frontend: Monolito Web Moderno (React / Next.js + TypeScript)
-- **Framework Recomendado de Mercado para Consumo de API**: **Next.js (App Router)** ou **React + Vite** com **TypeScript (`strict: true`)**.
-- **Consumo de API & Estado Assíncrono**:
-  - **TanStack Query v5 (React Query)**: Gerenciamento de cache no cliente, invalidação automática, paginação, retries, optimistic updates e deduplicação de requests.
-  - **Geração Automática de Clientes/Tipos**: Uso de `openapi-typescript` + `openapi-fetch` (ou Orval) lendo o `openapi.json` do backend C# para garantir **100% de sincronia de tipos End-to-End** sem digitar interfaces manualmente.
-- **Formulários e Validação**: **React Hook Form** + **Zod** (schemas espelhados nas regras da API).
-- **UI & Estilização**: **Tailwind CSS** + **shadcn/ui** (acessível WAI-ARIA, sem custo de licença, customizável).
-- **Autenticação**: `@supabase/ssr` / `@supabase/supabase-js` injetando automaticamente o `Bearer <access_token>` nas requisições para a API C#.
-
----
-
-## 3. Fluxo da Esteira Agêntica (Discovery -> Spec -> DoR -> Code -> QA/Sec -> DoD -> PR)
-
-Todo desenvolvimento deve respeitar os **Quality Gates** abaixo. Nenhum agente pode pular etapas:
-
-### Gate 1: Discovery, Requisitos e Previsão de Riscos (`product-requirements-analyst`)
-- Analisar a estrutura ou pedido do usuário.
-- Levantar **Requisitos Funcionais (RF)**, **Requisitos Não Funcionais (RNF)** (SLAs, latência, throughput, custo, retenção de dados, compatibilidade Web/Mobile).
-- Mapear **Riscos, Edge Cases e Problemas Previstos** com suas respectivas **Soluções Recomendadas**.
-- Listar todas as **Open Questions** bloqueantes. Se houver ambiguidade crítica, questionar o usuário antes de prosseguir ou documentar a decisão arquitetural padrão (ADR).
-
-### Gate 2: Arquitetura, Spec Técnica e Tasks (`domain-architect-planner`)
-- Modelar os **Bounded Contexts**, **Aggregates**, **Value Objects**, **Domain Events** e **Integration Events (RabbitMQ)**.
-- Definir contratos REST (rotas, payloads, status codes, idempotency keys) e schemas de banco PostgreSQL (índices, constraints).
-- Quebrar o trabalho em **Tasks Atômicas** ordenadas por dependência.
-- Validar a **Definition of Ready (DoR)** (ver `docs/pipeline/DEFINITION_OF_READY.md`). Nenhuma task vai para codificação sem cumprir 100% da DoR.
-
-### Gate 3: Implementação Guiada por Testes (`backend-csharp-developer` & `frontend-web-developer`)
-- Implementar seguindo estritamente a Spec e a Arquitetura Hexagonal.
-- **Testes Automatizados Obrigatórios**:
-  - **Backend (.NET)**: `xUnit` + `FluentAssertions` + `NSubstitute` (Unidade para Domain/Application) + `Testcontainers` (`PostgreSql`, `RabbitMq`) e `WebApplicationFactory` (Integração real da API e mensageria).
-  - **Frontend (TS)**: `Vitest` + `React Testing Library` + `MSW (Mock Service Worker)` (Unidade/Integração de componentes e hooks de API) + `Playwright` (fluxos críticos E2E).
-
-### Gate 4: Auditoria de Qualidade, Segurança OWASP e PR (`qa-security-reviewer` & `devops-ci-engineer`)
-- Validar **OWASP Top 10** e **OWASP API Security Top 10** (BOLA/IDOR, Broken Auth, Mass Assignment, Injection, Rate Limiting, Secrets Exposure).
-- Executar Linters e Formatadores (`dotnet format`, Roslyn Analyzers, `eslint`, `tsc --noEmit`).
-- Validar a **Definition of Done (DoD)** (ver `docs/pipeline/DEFINITION_OF_DONE.md`).
-- Gerar relatório rico de Pull Request contendo: Resumo Executivo, Arquitetura/Decisões, Evidência de Testes Executados, Checklist OWASP e Guia de Rollback.
+### 2.2. Frontend: Modern Web Monolith (React / Next.js + TypeScript)
+- **Recommended Market Framework for API Consumption**: **Next.js (App Router)** or **React + Vite** with **TypeScript (`strict: true`)**.
+- **API Consumption & Async State**:
+  - **TanStack Query v5 (React Query)**: Client-side cache management, automatic invalidation, pagination, retries, optimistic updates, and request deduplication.
+  - **Automated Client/Type Generation**: Use `openapi-typescript` + `openapi-fetch` (or Orval) consuming the backend `openapi.json` to ensure **100% End-to-End Type Safety** without manually typing interfaces.
+- **Forms and Validation**: **React Hook Form** + **Zod** (schemas mirroring API validation rules).
+- **UI & Styling**: **Tailwind CSS** + **shadcn/ui** (accessible WAI-ARIA, open-source, customizable).
+- **Authentication**: `@supabase/ssr` / `@supabase/supabase-js` automatically injecting the `Bearer <access_token>` into requests to the C# API.
 
 ---
 
-## 4. Mapa de Agentes, Skills e Documentação da Pasta
+## 3. Agentic Pipeline Workflow (Discovery -> Spec -> DoR -> Code -> QA/Sec -> DoD -> PR)
 
-Consulte e acione os recursos abaixo conforme a etapa do processo:
+All development must respect the **Quality Gates** below. No agent may skip phases:
 
-- **Agentes Especializados (`.agents/agents/`)**:
-  - `pipeline-orchestrator`: Maestro da esteira (coordena do Discovery ao PR).
-  - `product-requirements-analyst`: Especialista em Discovery, RF/RNF, Open Questions, Previsão de Falhas e DoR.
-  - `domain-architect-planner`: Arquiteto DDD, Hexagonal, EDA (RabbitMQ), PostgreSQL, API REST e decomposição de Tasks.
-  - `backend-csharp-developer`: Engenheiro C# .NET Minimal API, DDD, EF Core, MassTransit/RabbitMQ, Cache e xUnit/Testcontainers.
-  - `frontend-web-developer`: Engenheiro React/Next.js, TypeScript, TanStack Query, Zod, Supabase Auth e Vitest/Playwright.
-  - `qa-security-reviewer`: Auditor implacável de Clean Code, KISS, Testes, OWASP API Top 10 e revisor de PR.
-  - `devops-ci-engineer`: Engenheiro de GitHub Actions (CI/CD), Docker, automação de qualidade e controle de custos.
-- **Skills Operacionais (`.agents/skills/`)**:
-  - `discovery-and-spec`: Como transformar uma ideia ou pasta em Spec técnica completa, RF/RNF, ADRs e Tasks sem ambiguidades.
-  - `csharp-hexagonal-ddd`: Receitas de código e padrões para C# Minimal API, Arquitetura Hexagonal, Result Pattern, Outbox RabbitMQ, Cache e Supabase Auth.
-  - `frontend-api-architecture`: Arquitetura Frontend moderna orientada a consumo de REST API, TanStack Query, OpenAPI codegen e testes com MSW/Vitest.
-  - `owasp-quality-gate`: Checklist executável de segurança OWASP, lint, cobertura de testes e revisão de código automatizada.
-  - `pr-delivery-automation`: Como preparar commits semânticos, rodar a bateria de validação local/CI e abrir PRs detalhados no GitHub.
-  - `sre-observability-telemetry`: Padrões e runbooks de SRE, OpenTelemetry (Tracing, Metrics e Structured Logging), Grafana / Aspire Dashboard e RCA.
-  - `run-agentic-pipeline`: Orquestração automatizada multi-agente de ponta a ponta.
-- **Documentação e Templates (`docs/`)**:
+### Gate 1: Discovery, Requirements, and Risk Forecasting (`product-requirements-analyst`)
+- Analyze workspace structure or user requests.
+- Gather **Functional Requirements (FR)** and **Non-Functional Requirements (NFR)** (SLAs, latency, throughput, cost, data retention, Web/Mobile compatibility).
+- Map **Risks, Edge Cases, and Foreseen Failure Modes** with their respective **Recommended Solutions**.
+- List all blocking **Open Questions**. If critical ambiguity exists, interview the user before proceeding or document the default architectural decision (ADR).
+
+### Gate 2: Architecture, Technical Spec, and Tasks (`domain-architect-planner`)
+- Model **Bounded Contexts**, **Aggregates**, **Value Objects**, **Domain Events**, and **Integration Events (RabbitMQ)**.
+- Define REST contracts (routes, payloads, status codes, idempotency keys) and PostgreSQL database schemas (indexes, constraints).
+- Decompose work into **Atomic Tasks** ordered by dependency.
+- Validate the **Definition of Ready (DoR)** (see `docs/pipeline/DEFINITION_OF_READY.md`). No task proceeds to coding without meeting 100% of DoR.
+
+### Gate 3: Test-Driven Implementation (`backend-csharp-developer` & `frontend-web-developer`)
+- Implement strictly following the Spec and Hexagonal Architecture.
+- **Mandatory Automated Tests**:
+  - **Backend (.NET)**: `xUnit` + `FluentAssertions` + `NSubstitute` (Unit tests for Domain/Application) + `Testcontainers` (`PostgreSql`, `RabbitMq`) and `WebApplicationFactory` (Real API and messaging integration tests).
+  - **Frontend (TS)**: `Vitest` + `React Testing Library` + `MSW (Mock Service Worker)` (Unit/Integration tests for components and API hooks) + `Playwright` (Critical E2E flows).
+
+### Gate 4: Quality Audit, OWASP Security, and PR (`qa-security-reviewer` & `devops-ci-engineer`)
+- Validate against **OWASP Top 10** and **OWASP API Security Top 10** (BOLA/IDOR, Broken Auth, Mass Assignment, Injection, Rate Limiting, Secrets Exposure).
+- Run Linters and Formatters (`dotnet format`, Roslyn Analyzers, `eslint`, `tsc --noEmit`).
+- Validate the **Definition of Done (DoD)** (see `docs/pipeline/DEFINITION_OF_DONE.md`).
+- Generate a comprehensive Pull Request report containing: Executive Summary, Architecture/Decisions, Test Execution Evidence, OWASP Checklist, and Rollback Guide.
+
+---
+
+## 4. Map of Specialized Agents, Skills, and Documentation
+
+Consult and engage the resources below according to the pipeline phase:
+
+- **Specialized Agents (`.agents/agents/`)**:
+  - `pipeline-orchestrator`: Pipeline conductor (coordinates Discovery to PR).
+  - `product-requirements-analyst`: Specialist in Discovery, FR/NFR, Open Questions, Failure Modes, and DoR.
+  - `domain-architect-planner`: DDD, Hexagonal Architecture, EDA (RabbitMQ), PostgreSQL, REST API, and Task decomposition architect.
+  - `backend-csharp-developer`: C# .NET Minimal API, DDD, EF Core, MassTransit/RabbitMQ, Cache, and xUnit/Testcontainers senior engineer.
+  - `frontend-web-developer`: React/Next.js, TypeScript, TanStack Query, Zod, Supabase Auth, and Vitest/Playwright senior engineer.
+  - `qa-security-reviewer`: Quality auditor enforcing Clean Code, KISS, Testing, OWASP API Top 10, and PR reviews.
+  - `devops-ci-engineer`: Platform engineer for GitHub Actions (CI/CD), Docker, quality automation, and FinOps cost controls.
+- **Operational Skills (`.agents/skills/`)**:
+  - `discovery-and-spec`: Transforming an idea or workspace into a full technical Spec, FR/NFR, ADRs, and atomic Tasks without ambiguity.
+  - `csharp-hexagonal-ddd`: Code recipes and standards for C# Minimal API, Hexagonal Architecture, Result Pattern, RabbitMQ Outbox, Cache, and Supabase Auth.
+  - `frontend-api-architecture`: Modern frontend architecture for consuming REST APIs, TanStack Query, OpenAPI codegen, and MSW/Vitest testing.
+  - `owasp-quality-gate`: Executable security checklist (OWASP), linting, test coverage, and automated code review.
+  - `pr-delivery-automation`: Preparing semantic commits, executing local/CI validation test suites, and publishing detailed GitHub PRs.
+  - `sre-observability-telemetry`: SRE standards, OpenTelemetry (Tracing, Metrics, Structured Logging), Grafana / Aspire Dashboard, and RCA runbooks.
+  - `run-agentic-pipeline`: Multi-agent autonomous end-to-end orchestration.
+- **Documentation and Templates (`docs/`)**:
   - `docs/pipeline/DEFINITION_OF_READY.md` & `docs/pipeline/DEFINITION_OF_DONE.md`
   - `docs/templates/SPEC_TEMPLATE.md`, `docs/templates/ADR_TEMPLATE.md`, `docs/templates/TASKS_TEMPLATE.md`
   - `docs/architecture/STACK_AND_DECISIONS.md`
-

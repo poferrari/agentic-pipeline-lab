@@ -1,25 +1,24 @@
-# ADR-`[NNN]`: `[Título Curto da Decisão Arquitetural]`
+# ADR-`[NNN]`: `[Short Title of Architectural Decision]`
 
-- **Status**: `[Proposto | Aceito | Substituído por ADR-XXX]`
-- **Data**: `YYYY-MM-DD`
-- **Decisores**: `domain-architect-planner`
+- **Status**: `[Proposed | Accepted | Superseded by ADR-XXX]`
+- **Date**: `YYYY-MM-DD`
+- **Deciders**: `domain-architect-planner`
 
 ---
 
-## 1. Contexto e Problema
-Descreva de forma objetiva qual é a força técnica, requisito de negócio, restrição de custo (MVP) ou risco arquitetural que exige uma decisão.
+## 1. Context and Problem Statement
+Objectively describe the technical driver, business requirement, MVP cost constraint, or architectural risk that requires an explicit decision.
 
-## 2. Opções Consideradas
-1. **Opção A (Escolhida)**: `[Nome da Opção]`
-   - *Prós*: Baixo custo, simplicidade (KISS), alinhado à stack oficial.
-   - *Contras*: Limitações conhecidas e como serão mitigadas.
-2. **Opção B**: `[Nome da Opção]`
-   - *Motivo da rejeição*: Ex: Custo fixo alto para MVP ou complexidade acidental desnecessária.
+## 2. Considered Options
+1. **Option A (Chosen)**: `[Option Name]`
+   - *Pros*: Low cost, simplicity (KISS), alignment with official stack.
+   - *Cons*: Known limitations and planned mitigations.
+2. **Option B**: `[Option Name]`
+   - *Reason for Rejection*: e.g. High fixed cost for MVP or accidental complexity.
 
-## 3. Decisão
-Escolhemos a **Opção A** porque...
+## 3. Decision Outcome
+Chosen **Option A** because...
 
-## 4. Consequências e Impactos
-- **Impacto Positivo**: ...
-- **Trade-offs / Monitoramento**: Quando o sistema atingir `[métrica X]`, reavaliaremos esta decisão.
-
+## 4. Consequences and Trade-offs
+- **Positive Impacts**: ...
+- **Trade-offs / Monitoring**: When the system scales to `[metric X]`, this decision will be re-evaluated.

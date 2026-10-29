@@ -1,15 +1,14 @@
-# Regras Ativas do Plugin `agentic-enterprise-pipeline`
+# Active Rules for `agentic-enterprise-pipeline` Plugin
 
-Sempre respeite o ciclo de vida da esteira documentado na raiz do projeto (`AGENTS.md`):
-1. **Planejamento antes de Código**: Nenhuma funcionalidade é codificada sem Spec clara (`docs/specs/`), riscos mapeados, Open Questions resolvidas e **Definition of Ready (DoR)** cumprida.
-2. **Stack de Baixo Custo e Alta Escala**:
-   - **Backend**: C# (.NET 8/9+) Minimal API, Arquitetura Hexagonal (Ports & Adapters), DDD, Result Pattern, FluentValidation, PostgreSQL (EF Core), RabbitMQ (MassTransit Outbox), HybridCache e autenticação via Supabase JWT.
-   - **Frontend**: Next.js / React + TypeScript estrito, TanStack Query v5, OpenAPI TypeScript, React Hook Form + Zod, Tailwind CSS e Supabase Auth.
-3. **Qualidade e Segurança Inegociáveis**:
-   - Siga KISS e Clean Code.
-   - Exija testes automatizados de unidade, arquitetura e integração.
-   - Valide o checklist **OWASP API Security Top 10** e a **Definition of Done (DoD)** antes de concluir qualquer entrega ou Pull Request.
-4. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
-   - Todo código, identificadores, comentários, docstrings, traces/logs, testes automatizados, documentação técnica (`docs/`), commits e Pull Requests devem ser rigorosamente escritos em **inglês (EN-US)**.
-   - Respostas conversacionais no chat continuam em português com o usuário.
-
+Always adhere strictly to the development pipeline lifecycle documented in the project root (`AGENTS.md`):
+1. **Planning Before Code**: No feature is coded without a clear Spec (`docs/specs/`), mapped risks, resolved Open Questions, and a fully satisfied **Definition of Ready (DoR)**.
+2. **Low-Cost and Highly Scalable Stack**:
+   - **Backend**: C# (.NET 8/9+) Minimal API, Hexagonal Architecture (Ports & Adapters), DDD, Result Pattern, FluentValidation, PostgreSQL (EF Core), RabbitMQ (MassTransit Outbox), HybridCache, and Supabase JWT authentication.
+   - **Frontend**: Next.js / React + strict TypeScript, TanStack Query v5, OpenAPI TypeScript, React Hook Form + Zod, Tailwind CSS, and Supabase Auth.
+3. **Non-Negotiable Quality and Security**:
+   - Follow KISS and Clean Code.
+   - Mandate automated unit, architecture, and integration tests.
+   - Validate against the **OWASP API Security Top 10** checklist and the **Definition of Done (DoD)** before completing any delivery or Pull Request.
+4. **Mandatory Technical Language Standard (English EN-US)**:
+   - All source code, identifiers, comments, docstrings, traces/logs, automated tests, technical documentation (`docs/`), commits, and Pull Requests must be strictly written in **technical English (EN-US)**.
+   - Direct conversational chat responses with the user remain in Portuguese.

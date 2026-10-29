@@ -1,57 +1,56 @@
 ---
 name: owasp-quality-gate
 description: >-
-  Use esta skill antes de concluir qualquer implementação ou durante a revisão de código para auditar
-  segurança (OWASP Top 10 e OWASP API Security Top 10), Clean Code, KISS, Arquitetura Hexagonal,
-  cobertura de testes e validar a Definition of Done (DoD).
+  Use this skill prior to completing any implementation or during code review to audit
+  security (OWASP Top 10 and OWASP API Security Top 10), Clean Code, KISS, Hexagonal Architecture,
+  test coverage, and validate the Definition of Done (DoD).
 ---
 
-# Auditoria de Qualidade e Segurança OWASP (`owasp-quality-gate`)
+# Quality Audit and OWASP Security Gate (`owasp-quality-gate`)
 
-Esta skill atua como o **Quality Gate Automatizado** da esteira. Execute todas as verificações abaixo antes de abrir ou aprovar um Pull Request.
+This skill acts as the **Automated Quality Gate** of the pipeline. Execute all checks below before opening or approving any Pull Request.
 
 ---
 
-## 1. Checklist de Segurança OWASP API Security Top 10 (Verificação no Código)
+## 1. OWASP API Security Top 10 Checklist (Codebase Verification)
 
-| Código OWASP | Vulnerabilidade | O que verificar obrigatoriamente no Backend C# e Frontend TS |
+| OWASP Code | Vulnerability | Mandatory Check in Backend C# and Frontend TS |
 | :--- | :--- | :--- |
-| **API1:2023** | **Broken Object Level Authorization (BOLA / IDOR)** | Toda rota com `{id}` (`/api/v1/orders/{id}`) passa o `currentUser.Id` (do JWT Supabase) para a query do repositório? É impossível ler/alterar dados de outro usuário trocando o UUID na URL? |
-| **API2:2023** | **Broken Authentication** | O `JwtBearer` valida `Issuer`, `Audience`, `Lifetime` e assinatura JWKS do Supabase? O Frontend usa `@supabase/ssr` sem expor tokens em URLs? |
-| **API3:2023** | **Broken Object Property Level Authorization (Mass Assignment)** | Os endpoints Minimal API recebem `sealed record` Request DTOs específicos? Nenhuma entidade de domínio ou modelo EF Core é exposto diretamente no binding HTTP? |
-| **API4:2023** | **Unrestricted Resource Consumption** | Todas as queries de listagem têm `PageSize` limitado (ex.: `RuleFor(x => x.PageSize).InclusiveBetween(1, 100)`)? Rate Limiting (`UseRateLimiter`) e tamanho máximo de payload estão ativos? |
-| **API5:2023** | **Broken Function Level Authorization** | Todos os grupos de endpoints exigem `.RequireAuthorization()` por padrão, exceto rotas explicitamente públicas e documentadas? |
-| **API6:2023** | **Unrestricted Access to Sensitive Business Flows** | Fluxos críticos (pagamentos, reservas, criação de pedidos) exigem `Idempotency-Key` e proteção contra automação abusiva? |
-| **API7:2023** | **Server Side Request Forgery (SSRF)** | Se o backend faz chamadas HTTP externas baseadas em input, a URL passa por allowlist estrita de domínios e bloqueio de IPs privados/loopback? |
-| **API8:2023** | **Security Misconfiguration** | `CORS` restrito às origens configuradas (sem `AllowAnyOrigin()` com credenciais)? `ProblemDetails` oculta StackTrace quando `IsProduction()`? Security Headers (`X-Content-Type-Options`, `Strict-Transport-Security`) ativos? |
-| **API9:2023** | **Improper Inventory Management** | Rotas estão versionadas (`/api/v1/...`) e documentadas no OpenAPI? Endpoints de debug/teste estão desabilitados em produção? |
-| **API10:2023** | **Unsafe Consumption of APIs** | Integrações com terceiros e consumidores RabbitMQ validam o payload recebido, têm `Timeout`, `Retry` e `CircuitBreaker` (`Microsoft.Extensions.Http.Resilience`)? |
+| **API1:2023** | **Broken Object Level Authorization (BOLA / IDOR)** | Does every route with `{id}` (`/api/v1/orders/{id}`) pass `currentUser.Id` (from Supabase JWT) to repository queries? Is it impossible to read/mutate other users' data by tampering with the URL UUID? |
+| **API2:2023** | **Broken Authentication** | Does `JwtBearer` validate `Issuer`, `Audience`, `Lifetime`, and Supabase JWKS asymmetric signature? Does Frontend use `@supabase/ssr` without leaking tokens in URLs? |
+| **API3:2023** | **Broken Object Property Level Authorization (Mass Assignment)** | Do Minimal API endpoints accept dedicated `sealed record` Request DTOs? Are domain entities and EF Core models completely hidden from HTTP parameter binding? |
+| **API4:2023** | **Unrestricted Resource Consumption** | Do all listing queries enforce strict page size limits (e.g. `RuleFor(x => x.PageSize).InclusiveBetween(1, 100)`)? Are partitioned Rate Limiting (`UseRateLimiter`) and max request body size (2MB) active? |
+| **API5:2023** | **Broken Function Level Authorization** | Do all endpoint groups enforce `.RequireAuthorization()` by default, unless explicitly documented and publicly intended? |
+| **API6:2023** | **Unrestricted Access to Sensitive Business Flows** | Do critical state-changing workflows (payments, bookings, creations) require `Idempotency-Key` headers and anti-abuse safeguards? |
+| **API7:2023** | **Server-Side Request Forgery (SSRF)** | If the backend performs external HTTP calls based on inputs, does the URL pass through a strict domain allowlist with private/loopback IP blocking? |
+| **API8:2023** | **Security Misconfiguration** | Is `CORS` restricted to explicitly configured origins (no wildcard `AllowAnyOrigin()` with credentials)? Does `ProblemDetails` strip stack traces when `IsProduction()`? Are OWASP Security Headers (`CSP`, `X-Content-Type-Options`, `HSTS`) active? |
+| **API9:2023** | **Improper Inventory Management** | Are routes strictly versioned (`/api/v1/...`) and documented in OpenAPI? Are debug/testing endpoints disabled in production? |
+| **API10:2023** | **Unsafe Consumption of APIs** | Do external integrations and RabbitMQ consumers validate inbound payloads, enforcing `Timeout`, `Retry`, and `CircuitBreaker` (`Microsoft.Extensions.Http.Resilience`)? |
 
 ---
 
-## 2. Checklist de Clean Code, KISS e Arquitetura Hexagonal
+## 2. Clean Code, KISS, and Hexagonal Architecture Checklist
 
-1. **Zero Dependências Indevidas**: `App.Domain` não possui `using` de infraestrutura.
-2. **Sem Exceções para Fluxo de Negócio**: Handlers retornam `Result<T>`.
-3. **Sem Segredos no Git**: Verifique com `git status` e `git diff` se nenhum arquivo `.env`, senha de banco ou chave privada foi incluído.
-4. **Queries Seguras e Performáticas**: Sem concatenação de strings em SQL (prevenção total de SQL Injection via EF Core / Dapper parametrizado), uso de `.AsNoTracking()` em leituras.
+1. **Zero Prohibited Dependencies**: `App.Domain` has zero infrastructure `using` statements.
+2. **No Exceptions for Business Flow**: Handlers return explicit `Result<T>` values.
+3. **No Tracked Secrets in Git**: Verify with `git status` and `git diff` that no `.env` file, database credentials, or private keys are staged.
+4. **Secure and Performant Queries**: Zero string concatenation in SQL (complete SQL Injection prevention via parameterized EF Core / Dapper), and mandatory `.AsNoTracking()` on read queries.
 
 ---
 
-## 3. Execução do Script Unificado de Validação
+## 3. Unified Validation Script Execution
 
-Sempre execute o script de validação da esteira para comprovar que build, lint, testes de unidade, arquitetura e integração estão passando:
+Always execute the unified pipeline validation script to ensure compilation, linting, unit, architecture, and integration tests succeed:
 
 ```powershell
 pwsh -File scripts/validate-all.ps1
 ```
-Se qualquer etapa falhar, corrija a causa raiz antes de prosseguir.
+If any check fails, resolve the root cause prior to proceeding.
 
 ---
 
-## 4. Defesa em Profundidade e Bateria Pentest Automatizada
+## 4. Defense-in-Depth and Automated Pentest Battery
 
-Para arquitetura de defesa perimétrica, mitigação de origin bypass no Render e testes defensivos automatizados, consulte:
-* Documento mestre: `docs/security/DEFENSE_IN_DEPTH_AND_HARDENING_GUIDE.md`
-* Bateria de testes de segurança: `src/backend/tests/App.IntegrationTests/Security/SecurityHardeningAndPentestVerificationTests.cs`
-
+For edge perimeter defense architecture, origin bypass mitigation on Render, and automated defensive tests, consult:
+* Master guide: `docs/security/DEFENSE_IN_DEPTH_AND_HARDENING_GUIDE.md`
+* Automated security test suite: `src/backend/tests/App.IntegrationTests/Security/SecurityHardeningAndPentestVerificationTests.cs`
