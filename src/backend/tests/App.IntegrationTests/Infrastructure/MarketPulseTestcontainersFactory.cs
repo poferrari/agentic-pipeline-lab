@@ -52,10 +52,11 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
                 await _rabbitMqContainer.StartAsync().ConfigureAwait(false);
                 IsDockerEnvironmentActive = true;
 
-                // Ensure the database schema is created in the real PostgreSQL container
-                using var scope = Services.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                await dbContext.Database.EnsureCreatedAsync().ConfigureAwait(false);
+                // Ensure the database schema is created BEFORE the WebHost and background workers start
+                var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>()
+                    .UseNpgsql(_postgresContainer.GetConnectionString());
+                await using var initDbContext = new AppDbContext(optionsBuilder.Options);
+                await initDbContext.Database.EnsureCreatedAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -70,6 +71,10 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.UseSetting("Auth:AllowDemoHeader", "true");
+        builder.UseSetting("Messaging:Retry:Limit", "3");
+        builder.UseSetting("Messaging:Retry:InitialIntervalSeconds", "1");
+        builder.UseSetting("Messaging:Retry:MaxIntervalSeconds", "2");
+        builder.UseSetting("Messaging:Retry:IntervalDeltaSeconds", "1");
 
         if (_postgresContainer is not null && _rabbitMqContainer is not null)
         {

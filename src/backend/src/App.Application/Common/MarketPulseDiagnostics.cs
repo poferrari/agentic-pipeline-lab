@@ -41,5 +41,15 @@ public static class MarketPulseDiagnostics
         name: "marketpulse.messaging.consume_duration_seconds",
         unit: "s",
         description: "Time spent consuming and processing integration events");
+
+    public static readonly Counter<long> MessagingRetriedCounter = Meter.CreateCounter<long>(
+        name: "marketpulse.messaging.retries_total",
+        unit: "retries",
+        description: "Total number of transient retries executed for message consumption");
+
+    public static readonly Counter<long> MessagingDeadLetterCounter = Meter.CreateCounter<long>(
+        name: "marketpulse.messaging.dead_letter_total",
+        unit: "messages",
+        description: "Total number of poisoned messages routed to Dead Letter Queue after exhausting retries");
 }
 

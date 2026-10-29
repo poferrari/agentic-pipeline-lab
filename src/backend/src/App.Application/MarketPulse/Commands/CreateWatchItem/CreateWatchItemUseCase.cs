@@ -109,13 +109,13 @@ public sealed class CreateWatchItemCommandHandler(
         }
 
         await repository.AddAsync(watchItem, ct);
-        await unitOfWork.SaveChangesAsync(ct);
 
         var currentRate = watchItem.LastKnownRate;
         var spread = currentRate.HasValue ? watchItem.CalculateSpreadPercentage(currentRate.Value) : 0m;
         var correlationId = Activity.Current?.GetTagItem("correlation.id")?.ToString()
             ?? Activity.Current?.TraceId.ToString();
 
+        // Transactional Outbox Pattern: the event is published to the DbContext outbox in the same transaction
         await eventBusPublisher.PublishAsync(
             new CurrencyAlertNotificationEvent(
                 Guid.CreateVersion7(),
@@ -132,6 +132,7 @@ public sealed class CreateWatchItemCommandHandler(
                 DateTimeOffset.UtcNow),
             ct);
 
+        await unitOfWork.SaveChangesAsync(ct);
         watchItem.ClearDomainEvents();
 
         return Result.Success(MapToDto(watchItem));

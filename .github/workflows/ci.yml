@@ -68,7 +68,7 @@ jobs:
         run: |
           echo "## 🧪 Automated Test Suite Report (.NET 9 Hexagonal DDD)" >> $GITHUB_STEP_SUMMARY
           echo "- **Strict Build (\`-warnaserror\`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
-          echo "- **Suites Executed**: \`App.UnitTests\` (19 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (10 tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Suites Executed**: \`App.UnitTests\` (19 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (13 tests — Outbox, Idempotency, Exponential Retry, DLQ)" >> $GITHUB_STEP_SUMMARY
           echo "- **Testcontainers**: ✅ Real Docker Containers for PostgreSQL 17 & RabbitMQ 4 (AMQP 0-9-1) with Single Collection Fixture Lifecycle" >> $GITHUB_STEP_SUMMARY
           echo "- **Public API Integration**: \`https://api.frankfurter.app\` (ECB Exchange Rates) + \`HybridCache\`" >> $GITHUB_STEP_SUMMARY
 
