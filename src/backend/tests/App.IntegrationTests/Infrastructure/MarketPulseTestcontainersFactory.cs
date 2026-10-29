@@ -114,3 +114,4 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
         await base.DisposeAsync().ConfigureAwait(false);
     }
 }
+
