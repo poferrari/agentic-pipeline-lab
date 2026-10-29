@@ -1,89 +1,88 @@
-# Plano de Execução e Decomposição de Tasks: `[NOME_DA_FEATURE]`
+# Task Execution Plan and Atomic Decomposition: `[FEATURE_NAME]`
 
-> **Spec de Referência**: `docs/specs/[nome-da-spec].md`
-> **Regra de Execução**: As tasks são atômicas e sequenciais. Um agente só avança para a próxima task quando o **Comando de Verificação** da task atual passar com **0 erros**.
+> **Reference Spec**: `docs/specs/[spec-name].md`  
+> **Execution Rule**: Tasks are atomic and sequential. An agent only advances to the next task when the **Verification Command** of the current task succeeds with **0 errors**.
 
 ---
 
-## Resumo de Progresso
+## Progress Summary
 
-| Task ID | Camada | Título da Task | Agente Responsável | Status (`TODO` \| `IN_PROGRESS` \| `DONE`) |
+| Task ID | Layer | Task Title | Assigned Agent | Status (`TODO` \| `IN_PROGRESS` \| `DONE`) |
 | :--- | :--- | :--- | :--- | :--- |
-| `TASK-01` | Domain | Modelar Aggregate, Value Objects, Domain Events e Testes de Unidade | `backend-csharp-developer` | `TODO` |
-| `TASK-02` | Application | Implementar Commands, Queries, Validators (FluentValidation) e Testes | `backend-csharp-developer` | `TODO` |
-| `TASK-03` | Infrastructure | Mapear EF Core (PostgreSQL), Migrations, Outbox RabbitMQ, Cache e Auth | `backend-csharp-developer` | `TODO` |
-| `TASK-04` | API & Integration | Expor Minimal API Endpoints, OpenAPI e Testes de Integração (Testcontainers) | `backend-csharp-developer` | `TODO` |
-| `TASK-05` | Frontend | Gerar tipos OpenAPI, criar Hooks TanStack Query, UI, Zod Forms e Testes MSW | `frontend-web-developer` | `TODO` |
-| `TASK-06` | QA & Security | Executar Auditoria OWASP, Testes de Arquitetura, Linter e Relatório de PR | `qa-security-reviewer` | `TODO` |
+| `TASK-01` | Domain | Model Aggregate, Value Objects, Domain Events, and Unit Tests | `backend-csharp-developer` | `TODO` |
+| `TASK-02` | Application | Implement Commands, Queries, Validators (FluentValidation), and Tests | `backend-csharp-developer` | `TODO` |
+| `TASK-03` | Infrastructure | Map EF Core (PostgreSQL), Migrations, RabbitMQ Outbox, Cache, and Auth | `backend-csharp-developer` | `TODO` |
+| `TASK-04` | API & Integration | Expose Minimal API Endpoints, OpenAPI, and Integration Tests (Testcontainers) | `backend-csharp-developer` | `TODO` |
+| `TASK-05` | Frontend | Derive OpenAPI Types, TanStack Query Hooks, UI, Zod Forms, and MSW Tests | `frontend-web-developer` | `TODO` |
+| `TASK-06` | QA & Security | Execute OWASP Audit, Architecture Tests, Linters, and PR Report | `qa-security-reviewer` | `TODO` |
 
 ---
 
-## Detalhamento das Tasks Atômicas
+## Atomic Task Details
 
-### `TASK-01`: Modelagem do Core de Domínio e Testes de Unidade
-- **Objetivo**: Implementar as entidades, Value Objects, erros de domínio e interfaces de repositório sem dependências externas.
-- **Arquivos a Criar/Modificar**:
-  - `src/backend/src/App.Domain/[Contexto]/[Aggregate].cs`
-  - `src/backend/src/App.Domain/[Contexto]/ValueObjects/[ValueObject].cs`
-  - `src/backend/src/App.Domain/[Contexto]/I[Aggregate]Repository.cs`
+### `TASK-01`: Domain Core Modeling and Unit Tests
+- **Objective**: Implement entities, Value Objects, domain errors, and repository interfaces with zero external framework dependencies.
+- **Files to Create/Modify**:
+  - `src/backend/src/App.Domain/[Context]/[Aggregate].cs`
+  - `src/backend/src/App.Domain/[Context]/ValueObjects/[ValueObject].cs`
+  - `src/backend/src/App.Domain/[Context]/I[Aggregate]Repository.cs`
   - `src/backend/tests/App.UnitTests/Domain/[Aggregate]Tests.cs`
-- **Critérios de Pronto da Task**:
-  - Construtor privado com Factory Method retornando `Result<T>`.
-  - 100% das invariantes cobertas por testes de unidade em `xUnit`.
-- **Comando de Verificação**:
+- **Task Done Criteria**:
+  - Private constructors with factory methods returning `Result<T>`.
+  - 100% of domain invariants covered by unit tests in `xUnit`.
+- **Verification Command**:
   ```powershell
   dotnet test src/backend/tests/App.UnitTests --filter "FullyQualifiedName~Domain"
   ```
 
-### `TASK-02`: Casos de Uso (Application), Validações e Testes de Handlers
-- **Objetivo**: Implementar Command/Query Handlers, `FluentValidation` e contratos DTO.
-- **Arquivos a Criar/Modificar**:
-  - `src/backend/src/App.Application/[Contexto]/[Comando]/[Comando]Command.cs`
-  - `src/backend/src/App.Application/[Contexto]/[Comando]/[Comando]Validator.cs`
-  - `src/backend/src/App.Application/[Contexto]/[Comando]/[Comando]Handler.cs`
-  - `src/backend/tests/App.UnitTests/Application/[Comando]HandlerTests.cs`
-- **Comando de Verificação**:
+### `TASK-02`: Application Use Cases, Validators, and Handler Tests
+- **Objective**: Implement Command/Query Handlers, `FluentValidation`, and DTO contracts.
+- **Files to Create/Modify**:
+  - `src/backend/src/App.Application/[Context]/[Command]/[Command]Command.cs`
+  - `src/backend/src/App.Application/[Context]/[Command]/[Command]Validator.cs`
+  - `src/backend/src/App.Application/[Context]/[Command]/[Command]Handler.cs`
+  - `src/backend/tests/App.UnitTests/Application/[Command]HandlerTests.cs`
+- **Verification Command**:
   ```powershell
   dotnet test src/backend/tests/App.UnitTests --filter "FullyQualifiedName~Application"
   ```
 
-### `TASK-03`: Infraestrutura (EF Core PostgreSQL, RabbitMQ MassTransit, HybridCache)
-- **Objetivo**: Implementar os Driven Adapters (`IEntityTypeConfiguration`, Repositories, Consumers RabbitMQ com Outbox).
-- **Arquivos a Criar/Modificar**:
+### `TASK-03`: Infrastructure (EF Core PostgreSQL, RabbitMQ MassTransit, HybridCache)
+- **Objective**: Implement Driven Adapters (`IEntityTypeConfiguration`, Repositories, RabbitMQ Outbox consumers).
+- **Files to Create/Modify**:
   - `src/backend/src/App.Infrastructure/Persistence/Configurations/[Aggregate]Configuration.cs`
   - `src/backend/src/App.Infrastructure/Persistence/Repositories/[Aggregate]Repository.cs`
-  - `src/backend/src/App.Infrastructure/Messaging/[Evento]Consumer.cs`
-- **Comando de Verificação**:
+  - `src/backend/src/App.Infrastructure/Messaging/[Event]Consumer.cs`
+- **Verification Command**:
   ```powershell
   dotnet build src/backend -warnaserror
   ```
 
-### `TASK-04`: Minimal API Endpoints, Segurança JWT e Testes de Integração
-- **Objetivo**: Expor rotas HTTP em Minimal API com `TypedResults`, `.RequireAuthorization()`, `ProblemDetails` e validar com `Testcontainers`.
-- **Arquivos a Criar/Modificar**:
-  - `src/backend/src/App.Api/Endpoints/[Contexto]Endpoints.cs`
-  - `src/backend/tests/App.IntegrationTests/[Contexto]/[Contexto]ApiTests.cs`
+### `TASK-04`: Minimal API Endpoints, JWT Security, and Integration Tests
+- **Objective**: Expose HTTP routes in Minimal API with `TypedResults`, `.RequireAuthorization()`, `ProblemDetails`, and validate via `Testcontainers`.
+- **Files to Create/Modify**:
+  - `src/backend/src/App.Api/Endpoints/[Context]Endpoints.cs`
+  - `src/backend/tests/App.IntegrationTests/[Context]/[Context]ApiTests.cs`
   - `src/backend/tests/App.ArchTests/HexagonalArchitectureTests.cs`
-- **Comando de Verificação**:
+- **Verification Command**:
   ```powershell
   dotnet test src/backend
   ```
 
-### `TASK-05`: Integração Frontend (Tipos OpenAPI, TanStack Query, Componentes e Vitest)
-- **Objetivo**: Sincronizar contrato OpenAPI, criar hooks de busca/mutação, telas e testes com `Vitest` + `MSW`.
-- **Arquivos a Criar/Modificar**:
-  - `src/frontend/src/features/[contexto]/api/use[Recurso].ts`
-  - `src/frontend/src/features/[contexto]/components/[Componente].tsx`
-  - `src/frontend/src/features/[contexto]/__tests__/[Componente].test.tsx`
-- **Comando de Verificação**:
+### `TASK-05`: Frontend Integration (OpenAPI Types, TanStack Query, Components, Vitest)
+- **Objective**: Synchronize OpenAPI contracts, create query/mutation hooks, UI views, and tests with `Vitest` + `MSW`.
+- **Files to Create/Modify**:
+  - `src/frontend/src/features/[context]/api/use[Resource].ts`
+  - `src/frontend/src/features/[context]/components/[Component].tsx`
+  - `src/frontend/src/features/[context]/__tests__/[Component].test.tsx`
+- **Verification Command**:
   ```powershell
   npm --prefix src/frontend run lint; npm --prefix src/frontend run typecheck; npm --prefix src/frontend run test:run
   ```
 
-### `TASK-06`: Quality Gate Final, Revisão OWASP e Preparação de Pull Request
-- **Objetivo**: Validar toda a Definition of Done (DoD), checar vulnerabilidades OWASP Top 10 e gerar o documento/PR completo.
-- **Comando de Verificação**:
+### `TASK-06`: Final Quality Gate, OWASP Review, and Pull Request Preparation
+- **Objective**: Verify Definition of Done (DoD), check OWASP Top 10 vulnerabilities, and generate the final PR report.
+- **Verification Command**:
   ```powershell
   pwsh -File scripts/validate-all.ps1
   ```
-

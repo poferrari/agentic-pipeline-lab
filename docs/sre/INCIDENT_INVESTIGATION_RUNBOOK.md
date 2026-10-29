@@ -1,10 +1,10 @@
-# Playbook Operacional de SRE & Investigação de Incidentes (Runbook)
+# SRE Operational Playbook & Incident Investigation Runbook
 
-Este documento é o guia de referência executável para **Engenheiros de SRE**, **Desenvolvedores** e **Agentes de IA Autônomos** investigarem anomalias, crashes, degradações de latência e incidentes de segurança no **MarketPulse Lab**.
+This document serves as the executable reference guide for **SRE Engineers**, **Developers**, and **Autonomous AI Agents** investigating anomalies, crashes, latency degradations, and security incidents within **MarketPulse Lab**.
 
 ---
 
-## 1. Topologia da Arquitetura de Observabilidade
+## 1. Observability Architecture Topology
 
 ```
                         ┌─────────────────────────────────────────────────────────┐
@@ -20,7 +20,7 @@ Este documento é o guia de referência executável para **Engenheiros de SRE**,
                    ┌────────────────────────────────┴────────────────────────────────┐
                    │                                                                 │
                    ▼                                                                 ▼
-      [ Produção: Grafana Cloud ]                                      [ Local: Aspire Dashboard ]
+      [ Production: Grafana Cloud ]                                    [ Local: Aspire Dashboard ]
       Endpoint: prod-sa-east-1                                          Endpoint: http://localhost:18888
       Stack: bigveranda1683.grafana.net                                 OTLP Port: 4317 (gRPC)
       ┌─────────────┬─────────────┬─────────────┐                      ┌─────────────────────────┐
@@ -31,224 +31,222 @@ Este documento é o guia de referência executável para **Engenheiros de SRE**,
 
 ---
 
-## 2. Inventário de Fontes de Dados & Acesso
+## 2. Telemetry Data Source Inventory & Access
 
-| Pilar | Tecnologia | Data Source no Grafana Cloud | Endpoint OTLP |
+| Pillar | Technology | Grafana Cloud Data Source | OTLP Endpoint |
 | :--- | :--- | :--- | :--- |
 | **Traces** | Grafana Tempo | `grafanacloud-bigveranda1683-traces` | `/otlp/v1/traces` |
-| **Métricas** | Grafana Mimir (Prometheus) | `grafanacloud-bigveranda1683-prom` | `/otlp/v1/metrics` |
+| **Metrics** | Grafana Mimir (Prometheus) | `grafanacloud-bigveranda1683-prom` | `/otlp/v1/metrics` |
 | **Logs** | Grafana Loki | `grafanacloud-bigveranda1683-logs` | `/otlp/v1/logs` |
 | **Dashboard** | Grafana Dashboard | [MarketPulse Lab - SRE Golden Signals](https://bigveranda1683.grafana.net/d/pomrnx9/9de3a08) | N/A |
 | **Local** | .NET Aspire Dashboard | `http://localhost:18888` | `localhost:4317` |
 
 ---
 
-## 3. Catálogo de Queries Executáveis para Investigação
+## 3. Executable Query Catalog for Incident Investigation
 
-### 3.1. Queries de Métricas (PromQL) — Data Source: `grafanacloud-bigveranda1683-prom`
+### 3.1. Metric Queries (PromQL) — Data Source: `grafanacloud-bigveranda1683-prom`
 
-#### A. Saúde Geral e Erros (Taxa de Falhas)
-- **Taxa de Erro 5xx (SLO: < 0.1%)**:
+#### A. Overall Health and Error Rate
+- **5xx Error Rate (SLO: < 0.1%)**:
   ```promql
   (sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m]))) or vector(0)
   ```
-- **Total de Requisições com Erro por Código**:
+- **Total Requests with Errors by Status Code**:
   ```promql
   sum by (http_response_status_code) (increase(http_server_request_duration_seconds_count[5m]))
   ```
 
-#### B. Latência (Percentis p50, p95 e p99)
-- **Latência P95 por Rota (Alerta se > 500ms)**:
+#### B. Latency (p50, p95, and p99 Percentiles)
+- **P95 Latency by Route (Alert if > 500ms)**:
   ```promql
   histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[5m])))
   ```
-- **Latência Mediana (p50)**:
+- **Median Latency (p50)**:
   ```promql
   histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))
   ```
-- **Latência Extrema (p99)**:
+- **Extreme Latency (p99)**:
   ```promql
   histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))
   ```
 
-#### C. Tráfego e Volume de Negócio
-- **Vazão por Rota (Requisições por Segundo)**:
+#### C. Traffic and Business Volume
+- **Throughput by Route (Requests per Second)**:
   ```promql
   sum by (http_route, http_request_method) (rate(http_server_request_duration_seconds_count[1m]))
   ```
-- **Volume de Cotações Consultadas por Moeda Base**:
+- **Volume of Currency Quotes Consulted by Base Currency**:
   ```promql
   sum by (currency_base) (marketpulse_rates_requests_total)
   ```
 
-#### D. Saturação e Dependências
-- **Conexões HTTP de Saída (Ativas/Idle)**:
+#### D. Saturation and Dependencies
+- **Outbound HTTP Client Connections (Active/Idle)**:
   ```promql
   sum by (http_connection_state) (http_client_open_connections)
   ```
 
 ---
 
-### 3.2. Queries de Logs Estruturados (LogQL) — Data Source: `grafanacloud-bigveranda1683-logs`
+### 3.2. Structured Log Queries (LogQL) — Data Source: `grafanacloud-bigveranda1683-logs`
 
-#### A. Investigar Erros e Exceções
-- **Todos os Erros e Falhas (Status >= 500 ou Exceções Não Tratadas)**:
+#### A. Investigate Errors and Exceptions
+- **All Errors and Exceptions (Status >= 500 or Unhandled Exceptions)**:
   ```logql
   {service_name="agentic-pipeline-lab-api"} |~ "(?i)fail|error|exception|status 5"
   ```
-- **Apenas Logs com Nível `Error`**:
+- **Filter strictly by Log Level `Error`**:
   ```logql
   {service_name="agentic-pipeline-lab-api", level="Error"}
   ```
 
-#### B. Rastreamento Pontual por Identificador de Correlação
-- **Filtrar toda a cadeia de uma requisição pelo `CorrelationId`**:
+#### B. Trace Specific Request by Correlation Identifier
+- **Filter execution stream by `CorrelationId`**:
   ```logql
-  {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <ID_DO_CABEÇALHO_OU_RELATÓRIO>"
+  {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <TARGET_ID>"
   ```
-- **Filtrar pelo `TraceId`**:
+- **Filter by `TraceId`**:
   ```logql
-  {service_name="agentic-pipeline-lab-api"} |= "<TRACE_ID>"
+  {service_name="agentic-pipeline-lab-api"} |= "<TARGET_TRACE_ID>"
   ```
 
-#### C. Investigar Requisições Lentas
-- **Filtrar requisições que demoraram mais de 500ms**:
+#### C. Investigate Slow Requests
+- **Filter requests exceeding 500ms elapsed duration**:
   ```logql
   {service_name="agentic-pipeline-lab-api"} | json | elapsedMs > 500
   ```
 
 ---
 
-### 3.3. Queries de Rastreamento Distribuído (TraceQL) — Data Source: `grafanacloud-bigveranda1683-traces`
+### 3.3. Distributed Tracing Queries (TraceQL) — Data Source: `grafanacloud-bigveranda1683-traces`
 
-#### A. Localizar Spans com Erro
-- **Qualquer trace que contenha erro**:
+#### A. Locate Errored Spans
+- **Any trace containing an error**:
   ```traceql
   { status = error }
   ```
 
-#### B. Localizar Requisições com Alta Latência
-- **Traces com duração total maior que 1 segundo**:
+#### B. Locate High-Latency Requests
+- **Traces with total duration exceeding 1 second**:
   ```traceql
   { duration > 1s }
   ```
-- **Spans lentos na consulta à API externa Frankfurter**:
+- **Slow outbound requests to external Frankfurter API**:
   ```traceql
   { span.http.request.method = "GET" && span.server.address = "api.frankfurter.app" && duration > 500ms }
   ```
 
 ---
 
-## 4. Playbooks de Investigação de Incidentes (Passo a Passo)
+## 4. Incident Investigation Playbooks (Step-by-Step)
 
-### Playbook A: Investigação de Crash / Erro 500 Internal Server Error
+### Playbook A: Investigating Crash / HTTP 500 Internal Server Error
 
-**Sintoma:** O painel `Service Health Status` muda para `DEGRADED` ou a métrica `5xx Error Rate` sobe acima de 0%.
+**Symptom:** The `Service Health Status` panel switches to `DEGRADED` or `5xx Error Rate` rises above 0%.
 
 ```mermaid
 flowchart TD
-    A[Alerta: Erro 500 disparado] --> B[Obter X-Correlation-Id ou horário do incidente]
-    B --> C[Executar LogQL no Loki filtrando level=Error]
-    C --> D{Encontrou Exception?}
-    D -- Sim --> E[Inspecionar StackTrace e parâmetros do log]
-    D -- Não --> F[Buscar TraceId no Tempo para ver span que falhou]
-    E --> G[Identificar Causa Raiz: Banco / Broker / Bug de Código]
+    A[Alert: HTTP 500 Spike] --> B[Obtain X-Correlation-Id or Incident Timestamp]
+    B --> C[Execute LogQL in Loki filtering level=Error]
+    C --> D{Found Exception?}
+    D -- Yes --> E[Inspect StackTrace and Log Parameters]
+    D -- No --> F[Search TraceId in Tempo to view failing span]
+    E --> G[Identify Root Cause: Database / Broker / Code Bug]
     F --> G
-    G --> H[Mitigar: Rollback / Cache Fallback / Correção]
+    G --> H[Mitigate: Rollback / Cache Fallback / Hotfix]
 ```
 
-1. **Passo 1 (Localizar o Log do Erro no Loki)**:
-   Acesse o Grafana Explore -> Data Source `grafanacloud-bigveranda1683-logs` e execute:
+1. **Step 1 (Locate Error Log in Loki)**:
+   Navigate to Grafana Explore -> Data Source `grafanacloud-bigveranda1683-logs` and run:
    ```logql
    {service_name="agentic-pipeline-lab-api"} |~ "failed with status 5|Unhandled exception"
    ```
-2. **Passo 2 (Extrair Contexto)**:
-   Abra a linha do log. O middleware [`RequestTelemetryMiddleware.cs`](file:///d:/pipeline-dev-automatizador/src/backend/src/App.Api/Middleware/RequestTelemetryMiddleware.cs) terá anexado:
-   - `TraceId`: Identificador do trace no Tempo.
-   - `CorrelationId`: Identificador da transação.
-   - `RequestPath` e `RequestMethod`: Rota afetada.
-   - `Exception`: Tipo e linha exata do erro.
-3. **Passo 3 (Ver o Waterfall no Tempo)**:
-   Copie o `TraceId` e cole no Grafana Explore -> Data Source `grafanacloud-bigveranda1683-traces`.
-   Inspecione qual nó da cascata lançou o erro (se foi na camada de Domínio, EF Core ou HttpClient).
+2. **Step 2 (Extract Context)**:
+   Inspect the log entry. The [`RequestTelemetryMiddleware.cs`](file:///d:/pipeline-dev-automatizador/src/backend/src/App.Api/Middleware/RequestTelemetryMiddleware.cs) captures:
+   - `TraceId`: Trace identifier in Tempo.
+   - `CorrelationId`: End-to-end transaction ID.
+   - `RequestPath` and `RequestMethod`: Impacted route.
+   - `Exception`: Exception type, message, and stack trace line numbers.
+3. **Step 3 (View Waterfall in Tempo)**:
+   Copy `TraceId` into Grafana Explore -> Data Source `grafanacloud-bigveranda1683-traces`.
+   Inspect which node in the cascade threw the error (Domain layer, EF Core, or HttpClient).
 
 ---
 
-### Playbook B: Investigação de Degradação de Latência (P95/P99 Elevado)
+### Playbook B: Investigating Latency Degradation (Elevated P95/P99)
 
-**Sintoma:** O painel `P95 Latency` fica amarelo (> 250ms) ou vermelho (> 500ms).
+**Symptom:** `P95 Latency` panel turns yellow (> 250ms) or red (> 500ms).
 
-1. **Passo 1 (Identificar a Rota Ofensora)**:
-   No Grafana Explore (Prometheus), execute:
+1. **Step 1 (Identify Offending Route)**:
+   In Grafana Explore (Prometheus), run:
    ```promql
    topk(5, histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[5m]))))
    ```
-   Isso listará a rota com a maior latência.
-2. **Passo 2 (Examinar Spans Lentos no Tempo)**:
-   No Tempo, execute:
+2. **Step 2 (Examine Slow Spans in Tempo)**:
+   In Tempo, run:
    ```traceql
    { resource.service.name = "agentic-pipeline-lab-api" && duration > 500ms }
    ```
-   Clique no trace mais lento. O diagrama em cascata destacará a barra mais longa:
-   - **Se a barra mais longa for `ExchangeRates.GetQuote` / `api.frankfurter.app`**: O provedor externo de câmbio está lento ou sofrendo *throttling*. Solução: verificar tempo de expiração do `HybridCache` ou ativar cache estendido.
-   - **Se a barra mais longa for `Npgsql` / Banco de dados**: Houve bloqueio (*lock*) ou query pesada sem índice.
-   - **Se a barra mais longa for a API Kestrel**: Sobrecarga de CPU na instância do Render.
+   Select the slowest trace. The waterfall view reveals the longest bar:
+   - **Longest bar is `ExchangeRates.GetQuote` / `api.frankfurter.app`**: The external currency provider is experiencing throttling or high latency. Solution: Verify `HybridCache` TTL or activate fallback cache.
+   - **Longest bar is `Npgsql` / PostgreSQL**: Lock contention or heavy table scan without index.
+   - **Longest bar is Kestrel API execution**: CPU saturation on host instance.
 
 ---
 
-### Playbook C: Investigação de Anomalias de Segurança (BOLA / IDOR / Ataque de Força Bruta)
+### Playbook C: Investigating Security Anomalies (BOLA / IDOR / Brute-Force Scanning)
 
-**Sintoma:** Pico no gráfico `HTTP Status Code Distribution` em `401 Unauthorized` ou `404 Not Found` em rotas seguras.
+**Symptom:** Spike in `HTTP Status Code Distribution` on `401 Unauthorized` or `404 Not Found` across secure routes.
 
-1. **Passo 1 (Identificar IPs e Rotas Visadas)**:
-   No Loki, execute:
+1. **Step 1 (Identify Offending IPs and Routes)**:
+   In Loki, run:
    ```logql
    {service_name="agentic-pipeline-lab-api"} |~ "completed with client error 40[14]"
    ```
-2. **Passo 2 (Avaliar BOLA / IDOR)**:
-   Se houver repetições de `GET /api/v1/watchlist/{id}` retornando `404` para diferentes IDs com o mesmo usuário, trata-se de um teste de invasão (IDOR). O sistema está protegendo os dados conforme testado no [`MarketPulseApiIntegrationTests.cs`](file:///d:/pipeline-dev-automatizador/src/backend/tests/App.IntegrationTests/MarketPulseApiIntegrationTests.cs).
-3. **Passo 3 (Mitigação)**:
-   O middleware de `RateLimiter` (`RateLimitPartition`) aplicará `429 Too Many Requests` automaticamente ao IP abusivo após 60 requisições por minuto.
+2. **Step 2 (Evaluate BOLA / IDOR Attempt)**:
+   Repeated `GET /api/v1/watchlist/{id}` requests returning `404` for sequential UUIDs under the same user indicate BOLA traversal testing. The system protects data via owner scoping as tested in [`MarketPulseApiIntegrationTests.cs`](file:///d:/pipeline-dev-automatizador/src/backend/tests/App.IntegrationTests/MarketPulseApiIntegrationTests.cs).
+3. **Step 3 (Mitigation)**:
+   The `RateLimiter` (`RateLimitPartition`) automatically applies `429 Too Many Requests` to abusive client partitions exceeding configured thresholds.
 
 ---
 
-### Playbook D: Investigação de Mensageria Event-Driven (RabbitMQ / CloudAMQP)
+### Playbook D: Investigating Event-Driven Messaging (RabbitMQ / CloudAMQP)
 
-**Sintoma:** Alertas de cotação não disparados, mensagens acumuladas na fila ou divergência entre `marketpulse_messaging_published_total` e `marketpulse_messaging_consumed_total`.
+**Symptom:** Rate alert messages not triggered, queue backlog building up, or disparity between `marketpulse_messaging_published_total` and `marketpulse_messaging_consumed_total`.
 
-1. **Passo 1 (Auditar Ciclo de Vida no Loki)**:
-   Filtre os logs de publicação e consumo para acompanhar o trânsito do evento:
+1. **Step 1 (Audit Message Lifecycle in Loki)**:
+   Filter publish and consume logs:
    ```logql
    {service_name="agentic-pipeline-lab-api"} |= "EventBus"
    ```
-   - **`[PUBLISH_START]` / `[PUBLISH_SUCCESS]`**: Confirma que o use case `CreateWatchItemUseCase` gerou o `CurrencyAlertNotificationEvent` e publicou via MassTransit no RabbitMQ.
-   - **`[CONSUME_START]` / `[CONSUME_SUCCESS]`**: Confirma que o consumidor `CurrencyAlertConsumer` recebeu a mensagem na fila `marketpulse.currency-alerts` e processou com sucesso.
-   - **`[CONSUME_SKIPPED_DUPLICATE]`**: Mensagem reentregue pelo broker foi descartada de forma segura pelo mecanismo de **idempotência** (sem efeitos colaterais duplicados).
-   - **`[CONSUME_FAILED]`**: Exceção capturada durante o consumo. A mensagem entrará na política de retry exponencial do MassTransit ou na Dead Letter Queue (`_error`).
+   - **`[PUBLISH_START]` / `[PUBLISH_SUCCESS]`**: Confirms `CreateWatchItemUseCase` staged the event via MassTransit EntityFramework Outbox.
+   - **`[CONSUME_START]` / `[CONSUME_SUCCESS]`**: Confirms `CurrencyAlertConsumer` received and processed the message from `marketpulse.currency-alerts`.
+   - **`[CONSUME_SKIPPED_DUPLICATE]`**: Redelivered message dropped safely by the consumer's **idempotency** deduplication store.
+   - **`[CONSUME_FAILED]`**: Exception caught during consumption. The message transitions to MassTransit exponential retries or the Dead Letter Queue (`_error`).
 
-2. **Passo 2 (Rastreamento Distribuído no Tempo)**:
-   Pesquise no Grafana Tempo por:
+2. **Step 2 (Distributed Tracing in Tempo)**:
+   Search Tempo for:
    ```traceql
    { span.name = "CurrencyAlertConsumer.Consume" }
    ```
-   Inspecione os atributos do span:
+   Inspect span attributes:
    - `messaging.system` = `rabbitmq`
    - `messaging.destination` = `marketpulse.currency-alerts`
-   - `messaging.event_id` = UUID v7 do evento
-   - `correlation.id` = Correlation ID propagado ponta a ponta desde a requisição HTTP original!
+   - `messaging.event_id` = Event UUID v7
+   - `correlation.id` = Correlation ID propagated end-to-end from original HTTP request.
 
-3. **Passo 3 (Painel de Métricas CloudAMQP no Prometheus)**:
-   - **Taxa de Mensagens**: `rate(marketpulse_messaging_published_total[1m])` vs `rate(marketpulse_messaging_consumed_total[1m])`.
-   - **Latência do Consumer**: `histogram_quantile(0.95, sum(rate(marketpulse_messaging_consume_duration_seconds_bucket[5m])) by (le))`.
+3. **Step 3 (CloudAMQP Metric Gauges in Prometheus)**:
+   - **Message Rates**: `rate(marketpulse_messaging_published_total[1m])` vs `rate(marketpulse_messaging_consumed_total[1m])`.
+   - **Consumer Latency**: `histogram_quantile(0.95, sum(rate(marketpulse_messaging_consume_duration_seconds_bucket[5m])) by (le))`.
 
 ---
 
-## 5. Instruções para Agentes de IA Autônomos
+## 5. Instructions for Autonomous AI Agents
 
-Quando um Agente de IA for convocado para diagnosticar um problema nesta aplicação:
-1. Obtenha o `CorrelationId` ou `TraceId` informado no ticket ou prompt do usuário.
-2. Utilize o navegador ou a ferramenta de consulta de logs/métricas para pesquisar exatamente na fonte correspondente listada na Seção 2.
-3. Não presuma a causa raiz sem antes correlacionar o **Log do Erro** com o **Span do Trace**.
-4. Valide se os testes automatizados da solução cobrem o cenário usando `pwsh -File scripts/validate-all.ps1`.
-5. Apresente no relatório final: **Horário da Ocorrência**, **Trace ID**, **Span Ofensor**, **Causa Raiz Comprovada** e **Pull Request de Correção**.
-
+When an AI Agent is summoned to diagnose an issue in this application:
+1. Extract the `CorrelationId` or `TraceId` referenced in the prompt or issue ticket.
+2. Query the exact telemetry source listed in Section 2.
+3. Never assume root causes without correlating the **Error Log** with the **Trace Span**.
+4. Confirm solution tests cover the scenario using `pwsh -File scripts/validate-all.ps1`.
+5. Present in the final report: **Incident Timestamp**, **Trace ID**, **Failing Span**, **Proven Root Cause**, and **Corrective Pull Request**.

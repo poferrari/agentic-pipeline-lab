@@ -1,46 +1,45 @@
 ---
 name: discovery-and-spec
 description: >-
-  Use esta skill no início de qualquer novo projeto, épico ou feature para analisar a estrutura da pasta,
-  levantar Requisitos Funcionais e Não Funcionais (RF/RNF), prever problemas e soluções, resolver Open Questions,
-  desenhar a Spec técnica completa (DDD, Hexagonal, RabbitMQ, PostgreSQL, REST API, Frontend) e validar a
-  Definition of Ready (DoR) e o plano de Tasks antes de iniciar a codificação.
+  Use this skill at the beginning of any new project, epic, or feature to analyze repository structure,
+  gather Functional and Non-Functional Requirements (FR/NFR), forecast problems and solutions, resolve Open Questions,
+  design the full technical Spec (DDD, Hexagonal, RabbitMQ, PostgreSQL, REST API, Frontend), and validate the
+  Definition of Ready (DoR) and atomic Task plan prior to coding.
 ---
 
-# Discovery Proativo, Especificação Técnica e Decomposição de Tasks (`discovery-and-spec`)
+# Proactive Discovery, Technical Specification, and Task Decomposition (`discovery-and-spec`)
 
-Esta skill transforma qualquer estrutura de projeto, briefing ou solicitação em um **Plano de Engenharia Completo e Inequívoco**, garantindo que o próximo agente codifique sem dúvidas, sem retrabalho e sem bugs de arquitetura.
-
----
-
-## Passo 1: Varredura de Contexto e Análise Preventiva (Pre-Mortem)
-
-1. **Inspecione o Repositório**:
-   - Leia os arquivos existentes na pasta do projeto (documentos, diagramas, schemas, código legado ou rascunhos).
-2. **Aplique a Matriz de Previsão de Problemas (Proactive Problem Predictor)**:
-   Sempre verifique e responda na Spec como o sistema lidará com os 8 pontos críticos abaixo:
-   - **Concorrência e Duplicidade**: E se o usuário clicar 2 vezes ou a rede reenviar o POST? *(Solução padrão: `Idempotency-Key` no header ou constraint `UNIQUE` no PostgreSQL + captura de conflito `409`)*.
-   - **Falha de Dual-Write (DB + RabbitMQ)**: E se o commit no PostgreSQL funcionar, mas o RabbitMQ cair? *(Solução padrão: **Transactional Outbox Pattern** via MassTransit EF Core Outbox)*.
-   - **Mensagem Duplicada ou Venenosa no RabbitMQ**: E se o consumidor receber o mesmo evento 2 vezes ou falhar 3 vezes seguidas? *(Solução padrão: Consumidor idempotente checando estado/ID + Retry exponencial 3x -> Dead-Letter Queue `_error`)*.
-   - **Segurança Multi-Usuário (BOLA/IDOR)**: E se o usuário A passar o `Guid` de um registro do usuário B na URL? *(Solução padrão: Sempre filtrar no repositório por `WHERE id = @id AND owner_id = @currentUserId` extraído do JWT do Supabase)*.
-   - **Explosão de Leitura / Banco Lento**: E se uma listagem tiver 100.000 itens ou for chamada 500x por segundo? *(Solução padrão: Paginação obrigatória `pageSize <= 100`, índice composto no PostgreSQL e cache `HybridCache` com TTL curto)*.
-   - **Evolução para App Mobile**: Os endpoints retornam dados agnósticos de plataforma? *(Solução padrão: REST JSON puro com OpenAPI 3.1, sem acoplamento a sessão de cookie exclusivo de browser; suporte a header `Authorization: Bearer <token>`)*.
-   - **Custo de Infraestrutura (MVP FinOps)**: Há algum serviço pago desnecessário sendo proposto? *(Solução padrão: Substituir por Supabase Auth Free Tier, PostgreSQL unificado, `HybridCache` In-Memory L1 e RabbitMQ container/CloudAMQP free)*.
+This skill transforms any project structure, briefing, or user request into a **Complete and Unambiguous Engineering Plan**, ensuring subsequent implementing agents code without doubts, rework, or architectural flaws.
 
 ---
 
-## Passo 2: Resolução de Open Questions
+## Step 1: Context Inspection and Preventative Analysis (Pre-Mortem)
 
-1. Liste todas as perguntas em aberto (`Open Questions`).
-2. Para decisões puramente técnicas, adote imediatamente o padrão de mercado documentado em `docs/architecture/STACK_AND_DECISIONS.md` e registre como `RESOLVED`.
-3. Se houver alguma dúvida de **regra de negócio exclusiva do domínio do usuário** que impeça uma especificação exata, utilize a ferramenta `ask_question` apresentando opções claras e recomendando a opção mais enxuta para MVP (`(Recommended)`).
+1. **Inspect Workspace**:
+   - Read existing files in the project folder (documents, diagrams, schemas, legacy code, or drafts).
+2. **Apply the Proactive Problem Predictor Matrix**:
+   Always verify and answer in the Spec how the system will handle the 8 critical points below:
+   - **Concurrency and Duplication**: What if the user double-clicks or the network resends the POST request? *(Standard solution: `Idempotency-Key` header or `UNIQUE` constraint in PostgreSQL + `409 Conflict` capture)*.
+   - **Dual-Write Failure (DB + RabbitMQ)**: What if the PostgreSQL commit succeeds but RabbitMQ is temporarily unreachable? *(Standard solution: **Transactional Outbox Pattern** via MassTransit EF Core Outbox)*.
+   - **Duplicate or Poison Messages in RabbitMQ**: What if the consumer receives the same event twice or fails 3 times consecutively? *(Standard solution: Idempotent consumer checking record state/ID + Exponential Retry 3x -> Dead-Letter Queue `_error`)*.
+   - **Multi-Tenant Security (BOLA/IDOR)**: What if user A supplies the `Guid` of a record owned by user B in the URL? *(Standard solution: Always filter repository queries by `WHERE id = @id AND owner_id = @currentUserId` extracted from validated Supabase JWT)*.
+   - **Read Explosion / Database Latency**: What if a query targets 100,000 items or is invoked 500x per second? *(Standard solution: Mandatory pagination `pageSize <= 100`, composite PostgreSQL indexes, and short-TTL `HybridCache`)*.
+   - **Evolution to Mobile Apps**: Do endpoints return platform-agnostic data? *(Standard solution: Pure REST JSON with OpenAPI 3.1, zero browser cookie coupling; strict `Authorization: Bearer <token>` support)*.
+   - **Infrastructure Cost (MVP FinOps)**: Are unnecessary paid services being proposed? *(Standard solution: Replace with Supabase Auth Free Tier, unified PostgreSQL, In-Memory `HybridCache` L1, and containerized/CloudAMQP RabbitMQ)*.
 
 ---
 
-## Passo 3: Geração da Spec Completa e Plano de Tasks
+## Step 2: Open Questions Resolution
 
-1. Crie o arquivo `docs/specs/<slug-da-feature>.md` preenchendo **todas as 12 seções** de [SPEC_TEMPLATE.md](../../docs/templates/SPEC_TEMPLATE.md).
-   - Não deixe placeholders genéricos (`TODO`, `A definir`). Especifique nomes exatos de classes, propriedades, tipos, rotas HTTP, status codes, eventos RabbitMQ e índices SQL.
-2. Crie o arquivo `docs/specs/<slug-da-feature>-tasks.md` preenchendo [TASKS_TEMPLATE.md](../../docs/templates/TASKS_TEMPLATE.md).
-3. Confira rigorosamente cada item de [DEFINITION_OF_READY.md](../../docs/pipeline/DEFINITION_OF_READY.md). Somente libere para codificação quando 100% do checklist estiver marcado (`[x]`).
+1. List all ambiguous points (`Open Questions`).
+2. For purely technical decisions, adopt the documented baseline in `docs/architecture/STACK_AND_DECISIONS.md` and mark as `RESOLVED`.
+3. If questions involve **customer-specific business rules** that prevent accurate specification, use `ask_question` presenting clear choices with a recommended lean MVP option (`(Recommended)`).
 
+---
+
+## Step 3: Full Spec Generation and Atomic Task Plan
+
+1. Create `docs/specs/<feature-slug>.md` completing **all 12 sections** of [SPEC_TEMPLATE.md](../../docs/templates/SPEC_TEMPLATE.md).
+   - Avoid generic placeholders (`TODO`, `TBD`). Specify exact class names, property types, HTTP routes, status codes, RabbitMQ events, and SQL indexes.
+2. Create `docs/specs/<feature-slug>-tasks.md` completing [TASKS_TEMPLATE.md](../../docs/templates/TASKS_TEMPLATE.md).
+3. Strictly verify every item in [DEFINITION_OF_READY.md](../../docs/pipeline/DEFINITION_OF_READY.md). Only proceed to coding when 100% of the checklist is checked (`[x]`).

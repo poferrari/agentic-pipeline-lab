@@ -1,63 +1,62 @@
-## 🎯 1. Resumo Executivo e Contexto
-- **Spec / Requisito Relacionado**: `docs/specs/[nome-da-spec].md`
-- **Tasks Concluídas**: `docs/specs/[nome-da-spec]-tasks.md`
-- **Objetivo desta Entrega**:
-  <!-- Descreva de forma clara e objetiva o que foi construído e qual valor entrega ao MVP -->
+## 🎯 1. Executive Summary and Context
+- **Spec / Related Requirement**: `docs/specs/[spec-name].md`
+- **Completed Tasks**: `docs/specs/[spec-name]-tasks.md`
+- **Delivery Objective**:
+  <!-- Clearly and concisely describe what was built and what value it delivers to the MVP -->
 
 ---
 
-## 🏗️ 2. Arquitetura e Alterações por Camada (Hexagonal + DDD + EDA)
+## 🏗️ 2. Architecture and Layered Changes (Hexagonal + DDD + EDA)
 
-| Camada | Arquivos / Componentes Criados ou Alterados | Decisão Técnica Aplicada |
+| Layer | Files / Components Created or Modified | Applied Technical Decision |
 | :--- | :--- | :--- |
-| **`Domain` (C# Core)** | `...` | Aggregates com invariantes protegidas, Value Objects imutáveis, zero dependências externas. |
-| **`Application` (Use Cases)** | `...` | Commands/Queries, `FluentValidation`, retorno estrito via `Result<T>`. |
+| **`Domain` (C# Core)** | `...` | Aggregates with protected invariants, immutable Value Objects, zero external dependencies. |
+| **`Application` (Use Cases)** | `...` | Commands/Queries, `FluentValidation`, strict `Result<T>` returns. |
 | **`Infrastructure` (Adapters)** | `...` | EF Core (PostgreSQL), MassTransit Outbox (RabbitMQ), `HybridCache`, Supabase Auth JWT. |
-| **`Minimal API` (Driving)** | `...` | Endpoints com `TypedResults`, `ProblemDetails` (RFC 7807) e contrato OpenAPI v1. |
-| **`Frontend` (Web)** | `...` | Hooks `TanStack Query v5`, schemas `Zod`, integração Supabase e tratamento de estados (`loading/empty/error/success`). |
+| **`Minimal API` (Driving)** | `...` | Endpoints with `TypedResults`, RFC 7807 `ProblemDetails`, and OpenAPI v1 contract. |
+| **`Frontend` (Web)** | `...` | `TanStack Query v5` hooks, `Zod` schemas, Supabase auth integration, and full state handling (`loading/empty/error/success`). |
 
 ---
 
-## 🛡️ 3. Previsão de Problemas & Mitigações Implementadas
-- **Concorrência / Idempotência**: <!-- Ex: Uso de Idempotency-Key e Transactional Outbox Pattern -->
-- **Isolamento de Dados (BOLA / IDOR)**: <!-- Ex: Todas as queries filtram pelo UserId extraído do JWT do Supabase -->
-- **Performance & Cache**: <!-- Ex: Queries AsNoTracking paginadas e cacheadas via HybridCache -->
+## 🛡️ 3. Problem Forecasting & Implemented Mitigations
+- **Concurrency / Idempotency**: <!-- e.g. Idempotency-Key headers and Transactional Outbox Pattern -->
+- **Data Isolation (BOLA / IDOR)**: <!-- e.g. All queries filter by UserId extracted from validated Supabase JWT -->
+- **Performance & Caching**: <!-- e.g. AsNoTracking paginated queries cached via HybridCache -->
 
 ---
 
-## 🧪 4. Resultado Real dos Testes Executados
+## 🧪 4. Verified Executed Test Results
 
-| Suíte de Testes | Ferramenta | Total | Passaram | Falharam | Cobertura / Status |
+| Test Suite | Tooling | Total | Passed | Failed | Coverage / Status |
 | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Backend Unit Tests** (`Domain` & `Application`) | `xUnit` + `FluentAssertions` + `NSubstitute` | `0` | `0` | `0` | ✅ Passou |
-| **Backend Architecture Tests** (Hexagonal Rules) | `NetArchTest` | `0` | `0` | `0` | ✅ Passou |
-| **Backend Integration Tests** (`API + PG + RabbitMQ`) | `WebApplicationFactory` + `Testcontainers` | `0` | `0` | `0` | ✅ Passou |
-| **Frontend Unit & API Tests** (`Components + Hooks`) | `Vitest` + `Testing Library` + `MSW` | `0` | `0` | `0` | ✅ Passou |
+| **Backend Unit Tests** (`Domain` & `Application`) | `xUnit` + `FluentAssertions` + `NSubstitute` | `0` | `0` | `0` | ✅ Passed |
+| **Backend Architecture Tests** (Hexagonal Rules) | `NetArchTest` | `0` | `0` | `0` | ✅ Passed |
+| **Backend Integration Tests** (`API + PG + RabbitMQ`) | `WebApplicationFactory` + `Testcontainers` | `0` | `0` | `0` | ✅ Passed |
+| **Frontend Unit & API Tests** (`Components + Hooks`) | `Vitest` + `Testing Library` + `MSW` | `0` | `0` | `0` | ✅ Passed |
 
 <details>
-<summary>📋 <b>Clique para expandir o Log de Execução da Validação (`validate-all.ps1`)</b></summary>
+<summary>📋 <b>Click to expand validation test execution log (`validate-all.ps1`)</b></summary>
 
 ```text
-Cole aqui o output resumido do comando de testes e linter
+Paste summary test command output here
 ```
 </details>
 
 ---
 
-## 🔒 5. Checklist de Segurança (OWASP API Top 10) e Definition of Done (DoD)
+## 🔒 5. Security Checklist (OWASP API Top 10) and Definition of Done (DoD)
 
-- [ ] **DoR & Spec**: Código 100% fiel à Spec, sem ambiguidades ou escopo não planejado (KISS / Clean Code).
-- [ ] **API1 (BOLA / IDOR)**: Endpoints validam propriedade do recurso (`OwnerId == CurrentUser.Id`).
-- [ ] **API2 & API5 (AuthN / AuthZ)**: Validação de JWT do Supabase ativa e `.RequireAuthorization()` aplicado.
-- [ ] **API3 (Mass Assignment)**: Uso exclusivo de `record` DTOs imutáveis nas rotas Minimal API.
-- [ ] **API4 (Resource Consumption)**: Paginação limitada (`MaxPageSize <= 100`) e Rate Limiting respeitado.
-- [ ] **API8 (Secrets & Config)**: Zero segredos, chaves ou senhas hardcoded; `ProblemDetails` padronizado.
-- [ ] **Zero Warnings**: `dotnet build -warnaserror`, `dotnet format`, `eslint` e `tsc --noEmit` passaram sem alertas.
+- [ ] **DoR & Spec**: Code is 100% compliant with Spec, with zero ambiguity or scope creep (KISS / Clean Code).
+- [ ] **API1 (BOLA / IDOR)**: Endpoints enforce resource ownership (`OwnerId == CurrentUser.Id`).
+- [ ] **API2 & API5 (AuthN / AuthZ)**: Supabase JWT validation active and `.RequireAuthorization()` enforced.
+- [ ] **API3 (Mass Assignment)**: Exclusive use of immutable `record` DTOs in Minimal API parameter bindings.
+- [ ] **API4 (Resource Consumption)**: Page size caps enforced (`MaxPageSize <= 100`) and Rate Limiting active.
+- [ ] **API8 (Secrets & Config)**: Zero hardcoded secrets, keys, or passwords; standardized `ProblemDetails`.
+- [ ] **Zero Warnings**: `dotnet build -warnaserror`, `dotnet format`, `eslint`, and `tsc --noEmit` pass with zero warnings.
 
 ---
 
-## 🚀 6. Notas de Deploy, Migrations e Rollback
-- **Migrations de Banco (PostgreSQL)**: `[Sim / Não - descreva o comando ou impacto]`
-- **Novas Filas / Eventos (RabbitMQ)**: `[Sim / Não]`
-- **Procedimento de Rollback**: `[Passos seguros caso seja necessário reverter]`
-
+## 🚀 6. Deployment, Database Migrations, and Rollback Guide
+- **Database Migrations (PostgreSQL)**: `[Yes / No - describe command or schema impact]`
+- **New Messaging Queues / Events (RabbitMQ)**: `[Yes / No]`
+- **Rollback Procedure**: `[Safe operational steps if rollback is needed]`

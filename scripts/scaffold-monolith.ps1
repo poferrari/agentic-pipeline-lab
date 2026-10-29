@@ -1,5 +1,5 @@
-# Script de Bootstrap da Arquitetura Monolito Hexagonal (.NET C# + Frontend)
-# Cria a estrutura padrao de pastas e configuracoes para iniciar a codificacao em segundos.
+# Modular Hexagonal Monolith Architecture Bootstrap Script (.NET C# + Frontend)
+# Creates standard directory topologies and build props for rapid development.
 
 param(
     [string]$SolutionName = "App"
@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "[BOOTSTRAP] Inicializando estrutura Hexagonal DDD para '$SolutionName'..." -ForegroundColor Cyan
+Write-Host "[BOOTSTRAP] Initializing Hexagonal DDD structure for '$SolutionName'..." -ForegroundColor Cyan
 
 $dirs = @(
     "docs/specs",
@@ -33,5 +33,5 @@ $buildProps = @"
 "@
 Set-Content -Path "src/backend/Directory.Build.props" -Value $buildProps -Encoding UTF8
 
-Write-Host "[OK] Arquivo src/backend/Directory.Build.props configurado (Nullable=enable, TreatWarningsAsErrors=true)." -ForegroundColor Green
-Write-Host "[INFO] Quando desejar criar os projetos .NET (Domain, Application, Infrastructure, Api e Tests), o agente 'backend-csharp-developer' executara os comandos conforme a Spec aprovada." -ForegroundColor Yellow
+Write-Host "[OK] File src/backend/Directory.Build.props configured (Nullable=enable, TreatWarningsAsErrors=true)." -ForegroundColor Green
+Write-Host "[INFO] When ready to create .NET projects (Domain, Application, Infrastructure, Api, and Tests), the 'backend-csharp-developer' agent will run commands per the approved Spec." -ForegroundColor Yellow
