@@ -114,6 +114,9 @@ public static class DependencyInjection
                         }
 
                         e.ConfigureConsumer<CurrencyAlertConsumer>(context);
+                        e.SetQuorumQueue();
+                        e.SetQueueArgument("x-delivery-limit", 5);
+                        e.ConcurrentMessageLimit = 8;
                         e.PrefetchCount = 16;
                     });
 

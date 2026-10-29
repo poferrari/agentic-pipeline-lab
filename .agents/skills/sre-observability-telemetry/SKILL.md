@@ -160,3 +160,16 @@ Document in Markdown at `docs/incidents/YYYY-MM-DD-rca.md`:
 1. **Incident Summary**: Detection time, start time, resolution time (MTTD, MTTR).
 2. **Technical Root Cause**: 5 Whys analysis.
 3. **Corrective Action Items**: New automated regression integration test, alert tuning, and threshold adjustments.
+
+---
+
+## 4. RabbitMQ Golden Signals and Broker Telemetry (Gago.io Best Practices)
+
+Distributed event-driven architectures must monitor the **4 RabbitMQ Golden Health Signals**:
+
+| Signal | Metric / Prometheus Key | Problem Indicated | Recommended Threshold / Action |
+| :--- | :--- | :--- | :--- |
+| **Unacknowledged Messages** | `rabbitmq_queue_messages_unacknowledged` | Consumer memory leak, stalled consumers, or oversized prefetch | Alert if `messages_unacknowledged > 50` for > 2 min |
+| **Queue Backlog (Ready Messages)** | `rabbitmq_queue_messages_ready` | Consumption lag (producers outpacing consumers) | Alert if growing monotonically for > 5 min. Scale worker replicas. |
+| **Dead Letter / Poison Messages** | `rabbitmq_queue_messages{queue=~".*_error"}` | Poison messages, database serialization bugs, or contract mismatch | Alert on **ANY** message in `_error` queue (`count > 0`) |
+| **Connection Churn Rate** | `rate(rabbitmq_connections_opened_total[5m])` | Anti-pattern: opening TCP connections per request/message | Alert if churn > 1 conn/sec. Enforce singleton `IConnection`. |

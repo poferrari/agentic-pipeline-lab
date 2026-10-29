@@ -135,3 +135,21 @@ Apply **Back-of-the-Envelope Estimations** (ByteByteGo methodology):
    - $\text{Peak RPS} \times \text{Average Payload Size (KB)} = \text{Outbound Bandwidth (MB/s)}$.
 4. **Latency vs Throughput**:
    - High throughput does not guarantee low latency. Always measure percentiles: **p50 (median)**, **p95 (standard SLA)**, and **p99 (tail latency under burst)**.
+
+---
+
+## 8. Enterprise Messaging Topologies & RabbitMQ Architecture (Gago.io & AMQP Patterns)
+
+1. **Exchange Topologies**:
+   - **Direct**: Strict point-to-point command routing via exact `routing_key`.
+   - **Fanout**: Broadcast pub/sub (1:N) with zero routing key evaluation cost (maximum throughput and lowest latency broker-side).
+   - **Topic**: Hierarchical topic-based routing with `*` (single word) and `#` (zero or more words).
+2. **Producer-Consumer Boundary Isolation**:
+   - Producers only publish to Exchanges. Never bind producer code to queues.
+   - Consumers declare and own their private Queues and Exchange-to-Exchange (E2E) bindings.
+3. **Quorum Queues vs Classic Queues**:
+   - Classic mirrored queues (HA) were permanently removed in RabbitMQ 4.0+.
+   - Modern mission-critical systems must mandate **Quorum Queues** backed by Raft consensus for strong consistency (CP), partition tolerance, and automatic `x-delivery-limit` poison message protection.
+4. **QoS (Quality of Service) Sizing**:
+   - Golden rule: `PrefetchCount = ConcurrentConsumers * (2 to 3)`.
+   - Prevents memory exhaustion from unbounded prefetch while avoiding TCP ping-pong latency.
