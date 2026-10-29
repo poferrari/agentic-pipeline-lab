@@ -9,6 +9,8 @@ description: >-
 
 Esta skill estabelece os padrões técnicos e operacionais de **SRE (Site Reliability Engineering)**, **Observabilidade Moderna (Logs, Métricas e Traces)** e **Gestão de Incidentes** para aplicações corporativas com zero aprisionamento tecnológico (Vendor-Neutral).
 
+Consulte também o runbook detalhado em [`docs/sre/INCIDENT_INVESTIGATION_RUNBOOK.md`](file:///d:/pipeline-dev-automatizador/docs/sre/INCIDENT_INVESTIGATION_RUNBOOK.md).
+
 ---
 
 ## 1. Princípios de SRE e os 4 Sinais de Ouro (Golden Signals)
@@ -65,61 +67,65 @@ Toda API e serviço distribuído deve ser monitorado com base nos **4 Golden Sig
 
 ---
 
-## 3. Stack de Observabilidade Recomendada (Open Source & Custos)
+## 3. Cheat Sheet de Consultas para Investigação de Incidentes
 
-### Análise de Custos e Ferramentas:
+### A. Consultas de Métricas no Grafana Mimir / Prometheus (`grafanacloud-bigveranda1683-prom`)
+- **Taxa de Erros 5xx**:
+  ```promql
+  (sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m]))) or vector(0)
+  ```
+- **Latência P95 por Rota**:
+  ```promql
+  histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[5m])))
+  ```
+- **Throughput por Rota**:
+  ```promql
+  sum by (http_route, http_request_method) (rate(http_server_request_duration_seconds_count[1m]))
+  ```
 
-1. **Grafana**:
-   - **Auto-hospedado (Self-Hosted / Docker)**: 100% Open Source e Gratuito (licença AGPLv3).
-   - **Grafana Cloud**: Possui um **Free Tier Permanente** bastante generoso que atende MVPs e startups em estágio inicial:
-     - 10.000 séries ativas de métricas (Prometheus/Mimir).
-     - 50 GB de logs (Loki) com 14 dias de retenção.
-     - 50 GB de traces (Tempo) com 14 dias de retenção.
-     - 3 usuários e alertas ilimitados.
-     - Não exige cartão de crédito no plano gratuito.
+### B. Consultas de Logs no Grafana Loki (`grafanacloud-bigveranda1683-logs`)
+- **Buscar Erros e Falhas**:
+  ```logql
+  {service_name="agentic-pipeline-lab-api"} |~ "(?i)fail|error|exception|status 5"
+  ```
+- **Buscar por CorrelationId**:
+  ```logql
+  {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <ID_AQUI>"
+  ```
+- **Buscar por TraceId**:
+  ```logql
+  {service_name="agentic-pipeline-lab-api"} |= "<TRACE_ID_AQUI>"
+  ```
 
-2. **.NET Aspire Dashboard (Desenvolvimento e Ambientes Locais / Staging)**:
-   - Container oficial, 100% open-source e gratuito da Microsoft (`mcr.microsoft.com/dotnet/aspire-dashboard:9.0`).
-   - Não requer nenhum banco de dados ou configuração complexa. Basta iniciar o container na porta 18888 (UI) e 4317 (OTLP gRPC).
-   - Exibe visualmente traces em cascata (waterfall), métricas em tempo real e logs filtráveis por CorrelationId e TraceId.
+### C. Consultas de Tracing no Grafana Tempo (`grafanacloud-bigveranda1683-traces`)
+- **Traces com Erro**:
+  ```traceql
+  { status = error }
+  ```
+- **Traces Lentos (> 500ms)**:
+  ```traceql
+  { duration > 500ms }
+  ```
 
 ---
 
 ## 4. Como Conectar ao Grafana Cloud (ex: bigveranda1683.grafana.net)
 
-Para enviar telemetria diretamente da aplicação (.NET 9) ou do Docker/Render para a sua conta no Grafana Cloud, siga estes passos:
+Para enviar telemetria diretamente da aplicação (.NET 9) ou do Docker/Render para a sua conta no Grafana Cloud, configure:
 
-### Passo 1: Obter as Credenciais OTLP no Grafana Cloud
-1. Faça login na sua stack Grafana Cloud (ex: `https://bigveranda1683.grafana.net`).
-2. No menu lateral, acesse **Connections** -> **Add new connection**.
-3. Pesquise por **OpenTelemetry** e selecione o card.
-4. Clique em **Configure OpenTelemetry**.
-5. Em **Select your environment / language**, escolha **.NET** ou **Environment Variables**.
-6. Clique em **Generate Token** (ele criará um token com permissão de escrita em Traces, Metrics e Logs).
-7. O Grafana exibirá três valores prontos para copiar:
-   - `OTEL_EXPORTER_OTLP_ENDPOINT` (exemplo: `https://otlp-gateway-prod-us-east-0.grafana.net/otlp`)
-   - `OTEL_EXPORTER_OTLP_PROTOCOL`: `http/protobuf`
-   - `OTEL_EXPORTER_OTLP_HEADERS`: `Authorization=Basic <TOKEN_GERADO_BASE64>`
-
-### Passo 2: Configurar no Ambiente
-
-#### A. Em Produção no Render:
-No painel do serviço no Render:
-1. Vá em `Environment` (`https://dashboard.render.com/web/srv-dbh8dc7f3r2c73bv92h0/env`).
-2. Adicione as 3 variáveis obtidas no Passo 1:
-   - `OTEL_EXPORTER_OTLP_ENDPOINT`: `https://otlp-gateway-prod-us-east-0.grafana.net/otlp`
-   - `OTEL_EXPORTER_OTLP_PROTOCOL`: `http/protobuf`
-   - `OTEL_EXPORTER_OTLP_HEADERS`: `Authorization=Basic <seu_token>`
-3. Salve as alterações. O Render fará o redeploy automático e todas as requisições, métricas e logs começarão a fluir para o Grafana Cloud!
-
-#### B. Localmente com Docker Compose:
-No arquivo `.env`:
-```env
-OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-0.grafana.net/otlp
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <seu_token>"
+```bash
+OTEL_SERVICE_NAME="agentic-pipeline-lab-api"
+OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-sa-east-1.grafana.net/otlp"
+OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <TOKEN_BASE64>"
 ```
-Em seguida: `docker compose up -d`.
+
+### Importante sobre o Protocolo HTTP Protobuf no .NET:
+O SDK .NET com `OtlpExportProtocol.HttpProtobuf` requer que cada sinal anexe seu respectivo sufixo de rota:
+- Traces: `{Endpoint}/v1/traces`
+- Métricas: `{Endpoint}/v1/metrics`
+- Logs: `{Endpoint}/v1/logs`
+Essa regra está implementada e garantida em [`Program.cs`](file:///d:/pipeline-dev-automatizador/src/backend/src/App.Api/Program.cs).
 
 ---
 
@@ -137,7 +143,7 @@ Quando um alerta disparar ou um erro for reportado em produção, siga rigorosam
 1. Obtenha o `X-Correlation-Id` ou `X-Trace-Id` do cabeçalho da resposta HTTP ou do relatório do usuário.
 2. No Grafana Loki ou Aspire Dashboard, filtre:
    ```logql
-   {service="MarketPulse.Api"} |= "CorrelationId: <ID_AQUI>"
+   {service_name="agentic-pipeline-lab-api"} |= "CorrelationId: <ID_AQUI>"
    ```
 3. Abra a aba **Traces** (Tempo) e cole o `TraceId`.
 4. Analise a árvore de spans em cascata:
