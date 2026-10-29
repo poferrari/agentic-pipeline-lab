@@ -66,10 +66,10 @@ jobs:
       - name: Generate GitHub Step Summary Report
         if: always()
         run: |
-          echo "## 🧪 Relatório Automatizado de Testes (.NET 9 Hexagonal DDD)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Compilação Estrita (`-warnaserror`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
-          echo "- **Suítes Executadas**: `App.UnitTests` (17 testes), `App.ArchTests` (3 testes), `App.IntegrationTests` (5 testes — total 25 asserções)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Integração API Pública**: `https://api.frankfurter.app` (ECB Exchange Rates) + `HybridCache`" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Automated Test Suite Report (.NET 9 Hexagonal DDD)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Strict Build (\`-warnaserror\`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
+          echo "- **Suites Executed**: \`App.UnitTests\` (17 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (5 tests — 25 total assertions)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Public API Integration**: \`https://api.frankfurter.app\` (ECB Exchange Rates) + \`HybridCache\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # 2. DOCKER CONTAINER BUILD & SMOKE TEST (Render Readiness)
@@ -88,13 +88,20 @@ jobs:
       - name: Run Container Smoke Test on Port 8080 (Render Contract)
         run: |
           docker run -d --name marketpulse_smoke -p 8080:8080 agentic-pipeline-lab:ci
-          for i in {1..15}; do
-            if curl -sSf http://localhost:8080/health/live > /dev/null; then
+          LIVE=0
+          for i in {1..20}; do
+            if curl -sSf http://localhost:8080/health/live > /dev/null 2>&1; then
               echo "✅ Container is LIVE on port 8080!"
+              LIVE=1
               break
             fi
             sleep 2
           done
+          if [ "$LIVE" -ne 1 ]; then
+            echo "❌ Container failed to become healthy. Container logs:"
+            docker logs marketpulse_smoke
+            exit 1
+          fi
           curl -sSf http://localhost:8080/health/live
           curl -sSf http://localhost:8080/health/ready
           curl -sSf "http://localhost:8080/api/v1/rates/USD?symbols=BRL,EUR"
@@ -137,5 +144,5 @@ jobs:
             curl -sSf -X POST "$RENDER_DEPLOY_HOOK_URL"
             echo "✅ Render Deploy Hook triggered successfully for prj-d6rakhshg0os73a5ahqg!" >> $GITHUB_STEP_SUMMARY
           else
-            echo "ℹ️ Render Native Git Auto-Deploy active via render.yaml (or set RENDER_DEPLOY_HOOK_URL secret for webhook trigger)." >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ Render Native Git Auto-Deploy active via render.yaml." >> $GITHUB_STEP_SUMMARY
           fi
