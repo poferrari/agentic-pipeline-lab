@@ -21,6 +21,12 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
             headers.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
             headers.TryAdd("X-XSS-Protection", "0");
             headers.TryAdd("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+            headers.TryAdd("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self';");
+            headers.TryAdd("X-Permitted-Cross-Domain-Policies", "none");
+            if (context.Request.IsHttps)
+            {
+                headers.TryAdd("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+            }
             return Task.CompletedTask;
         });
 

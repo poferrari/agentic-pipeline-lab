@@ -47,3 +47,11 @@ pwsh -File scripts/validate-all.ps1
 ```
 Se qualquer etapa falhar, corrija a causa raiz antes de prosseguir.
 
+---
+
+## 4. Defesa em Profundidade e Bateria Pentest Automatizada
+
+Para arquitetura de defesa perimétrica, mitigação de origin bypass no Render e testes defensivos automatizados, consulte:
+* Documento mestre: `docs/security/DEFENSE_IN_DEPTH_AND_HARDENING_GUIDE.md`
+* Bateria de testes de segurança: `src/backend/tests/App.IntegrationTests/Security/SecurityHardeningAndPentestVerificationTests.cs`
+
