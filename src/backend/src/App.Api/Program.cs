@@ -4,6 +4,7 @@ using App.Api.Middleware;
 using App.Application;
 using App.Application.Common;
 using App.Infrastructure;
+using App.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -264,6 +265,13 @@ var endpoints = typeof(Program).Assembly
 foreach (var endpoint in endpoints)
 {
     endpoint.MapEndpoint(app);
+}
+
+if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Database")))
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.EnsureCreatedAsync();
 }
 
 await app.RunAsync();
