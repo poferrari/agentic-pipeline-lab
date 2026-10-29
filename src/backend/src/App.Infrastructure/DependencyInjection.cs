@@ -1,4 +1,5 @@
 using App.Application.Abstractions;
+using App.Application.MarketPulse.Events;
 using App.Domain.Common;
 using App.Domain.MarketPulse.Repositories;
 using App.Infrastructure.ExternalApis.Frankfurter;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddHttpContextAccessor();
@@ -55,23 +57,48 @@ public static class DependencyInjection
         });
 
         var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMq");
+        var retryLimit = configuration.GetValue("Messaging:Retry:Limit", 10);
+        var initialIntervalSeconds = configuration.GetValue("Messaging:Retry:InitialIntervalSeconds", 1);
+        var maxIntervalSeconds = configuration.GetValue("Messaging:Retry:MaxIntervalSeconds", 30);
+        var intervalDeltaSeconds = configuration.GetValue("Messaging:Retry:IntervalDeltaSeconds", 2);
+
         services.AddMassTransit(bus =>
         {
             bus.AddConsumer<CurrencyAlertConsumer>();
+            bus.AddConsumer<CurrencyAlertFaultConsumer>();
+
+            if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+            {
+                bus.AddEntityFrameworkOutbox<AppDbContext>(o =>
+                {
+                    o.UsePostgres();
+                    o.UseBusOutbox();
+                    o.QueryDelay = TimeSpan.FromSeconds(1);
+                });
+            }
 
             if (!string.IsNullOrWhiteSpace(rabbitMqConnectionString))
             {
                 bus.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(new Uri(rabbitMqConnectionString));
-                    cfg.UseMessageRetry(r => r.Exponential(
-                        3,
-                        TimeSpan.FromSeconds(1),
-                        TimeSpan.FromSeconds(7),
-                        TimeSpan.FromSeconds(2)));
 
                     cfg.ReceiveEndpoint("marketpulse.currency-alerts", e =>
                     {
+                        e.Bind<CurrencyAlertNotificationEvent>();
+                        e.Bind<ICurrencyAlertConsumerContract>();
+
+                        e.UseMessageRetry(r => r.Exponential(
+                            retryLimit,
+                            TimeSpan.FromSeconds(initialIntervalSeconds),
+                            TimeSpan.FromSeconds(maxIntervalSeconds),
+                            TimeSpan.FromSeconds(intervalDeltaSeconds)));
+
+                        if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+                        {
+                            e.UseEntityFrameworkOutbox<AppDbContext>(context);
+                        }
+
                         e.ConfigureConsumer<CurrencyAlertConsumer>(context);
                         e.PrefetchCount = 16;
                     });
