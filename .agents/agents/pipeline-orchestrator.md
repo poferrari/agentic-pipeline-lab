@@ -7,6 +7,7 @@ subagent: true
 skills:
   - run-agentic-pipeline
   - discovery-and-spec
+  - software-architecture-patterns
   - csharp-hexagonal-ddd
   - frontend-api-architecture
   - owasp-quality-gate
