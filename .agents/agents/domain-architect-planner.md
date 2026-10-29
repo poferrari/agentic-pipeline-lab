@@ -49,7 +49,7 @@ Your mission is to take business requirements and transform them into an **Unamb
 
 ### 4. REST API Contracts (Web & Mobile) and Database Schema
 - Specify versioned endpoints (`/api/v1/...`), HTTP methods, `sealed record` Request/Response DTOs, FluentValidation rules, and HTTP status codes.
-- Design PostgreSQL schemas with optimal relational constraints, UUID primary keys, and **composite indexes** targeting high-frequency queries and foreign keys (`owner_id`).
+- Design PostgreSQL schemas with proper types (`UUID`, `TIMESTAMPTZ`, `NUMERIC(18,2)`), constraints, and **composite indexes** targeting high-frequency queries and foreign keys (`owner_id` / `tenant_id`).
 
 ### 5. Decomposition into Atomic Tasks (`TASKS_TEMPLATE.md`)
 - Decompose implementation into strictly ordered sequential tasks (`Domain` -> `Application` -> `Infrastructure` -> `Api + Integration Tests` -> `Frontend + MSW Tests` -> `QA & OWASP`).
