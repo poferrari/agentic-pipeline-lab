@@ -5,37 +5,82 @@ description: >-
   Fornece a estrutura exata e padrões de código mínimo (KISS / Clean Code) para Minimal APIs,
   Arquitetura Hexagonal (Ports & Adapters), Domain-Driven Design (DDD), Result Pattern,
   FluentValidation, PostgreSQL (EF Core), RabbitMQ (MassTransit Outbox), HybridCache,
-  autenticação Supabase JWT e testes automatizados (xUnit, NetArchTest, Testcontainers).
+  autenticação Supabase JWT, guard rails do Microsoft .NET Team (dotnet/skills) e testes automatizados.
 ---
 
-# Padrões Backend C# (.NET Minimal API + Arquitetura Hexagonal + DDD + RabbitMQ)
+# Padrões Backend C# (.NET 9+ Minimal API + Arquitetura Hexagonal + DDD + RabbitMQ)
 
-Siga estes padrões para produzir código C# legível, enxuto (**KISS**), de fácil manutenção (**Clean Code**) e 100% aderente à **Arquitetura Hexagonal**.
+Siga rigorosamente estes padrões e guard rails oficiais alinhados às diretrizes do time do **.NET da Microsoft (`dotnet/skills`)**, **LazySkills C# standards** e **Clean Code**.
 
 ---
 
-## 1. Estrutura de Projetos e Dependências Estritas
+## 1. Estrutura de Solução e Dependências Estritas
 
 ```text
 src/backend/
-├── Directory.Build.props
+├── Directory.Build.props      # <Nullable>enable</Nullable>, <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 ├── src/
 │   ├── App.Domain/           # Sem dependências externas! Apenas C# puro.
 │   ├── App.Application/      # Referencia apenas: App.Domain + FluentValidation
-│   ├── App.Infrastructure/   # Referencia: App.Domain, App.Application + EF Core Npgsql, MassTransit.RabbitMQ, HybridCache, JwtBearer
+│   ├── App.Infrastructure/   # Referencia: App.Domain, App.Application + EF Core Npgsql, MassTransit, HybridCache, JwtBearer
 │   └── App.Api/              # Referencia: App.Application, App.Infrastructure (apenas para DI)
 └── tests/
     ├── App.UnitTests/        # xUnit, FluentAssertions, NSubstitute
     ├── App.ArchTests/        # NetArchTest.Rules
-    └── App.IntegrationTests/ # Microsoft.AspNetCore.Mvc.Testing, Testcontainers.PostgreSql, Testcontainers.RabbitMq
+    └── App.IntegrationTests/ # WebApplicationFactory, Testcontainers (PostgreSQL, RabbitMQ)
 ```
 
 ---
 
-## 2. Padrões Essenciais de Código (Clean Code & KISS)
+## 2. Guard Rails Estritos de Linguagem C# 12/13 (.NET 9)
 
-### 2.1. Result Pattern & Error (`App.Domain/Common/Result.cs`)
-Nunca use `throw new Exception()` para regras de negócio ou validações esperadas.
+### 2.1. Regras para DTOs e Contratos de API
+- **`public sealed record` obrigatório**: DTOs de Request e Response devem ser `sealed record` com propriedades posicionais ou `{ get; init; }`. Garante imutabilidade, comparação por valor e otimização JIT.
+- **Nomenclatura Padrão**: `Create{Entity}Request`, `Update{Entity}Request`, `{Entity}Response`, `{Entity}ListResponse`.
+- **`DateTimeOffset` Exclusivo**: Jamais use `DateTime` cru em contratos de API ou eventos. Use sempre `DateTimeOffset` para precisão UTC e conformidade ISO 8601.
+- **Docstrings XML**: Todos os DTOs devem conter `<summary>` nos seus parâmetros para enriquecer automaticamente a documentação OpenAPI gerada.
+
+```csharp
+namespace App.Application.MarketPulse.DTOs;
+
+/// <summary>
+/// Request contract to register a new currency pair for real-time tracking.
+/// </summary>
+/// <param name="BaseCurrency">3-letter ISO code for the base currency (e.g. USD).</param>
+/// <param name="TargetCurrency">3-letter ISO code for the target currency (e.g. BRL).</param>
+/// <param name="TargetRate">The target exchange rate triggering alert notifications.</param>
+/// <param name="Notes">Optional contextual user notes.</param>
+public sealed record CreateWatchItemRequest(
+    string BaseCurrency,
+    string TargetCurrency,
+    decimal TargetRate,
+    string? Notes);
+```
+
+### 2.2. Sintaxe Idiomática C# 12/13
+- **Collection Expressions**: Use `[...]` para coleções, listas vazias ou literais:
+  ```csharp
+  List<string> symbols = [];
+  ReadOnlySpan<byte> buffer = [0x01, 0x02, 0x03];
+  ```
+- **Primary Constructors**: Adote construtores primários concisos em services, controllers e records:
+  ```csharp
+  public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger) : IConsumer<CurrencyAlertEvent>
+  ```
+- **`System.Threading.Lock` (.NET 9)**: Substitua `lock(new object())` pelo novo tipo `System.Threading.Lock`:
+  ```csharp
+  private readonly System.Threading.Lock _syncLock = new();
+  // ...
+  lock (_syncLock) { /* secao critica otimizada */ }
+  ```
+- **Raw String Literals**: Use `"""` para JSON, SQL ou templates multilinhas sem caracteres de escape desnecessários.
+
+---
+
+## 3. Padrões de Domínio e Aplicação (Hexagonal & DDD)
+
+### 3.1. Result Pattern & Erros Sem Exceções (`App.Domain/Common/Result.cs`)
+Nunca lance exceções para validações ou regras esperadas de negócio. Retorne `Result<T>`:
 
 ```csharp
 namespace App.Domain.Common;
@@ -79,131 +124,159 @@ public sealed class Result<TValue> : Result
 }
 ```
 
-### 2.2. Aggregate Root & Domain Events (`App.Domain`)
-Entidades protegem suas invariantes com construtores privados e métodos de fábrica claros:
+### 3.2. Aggregate Roots e Invariantes Protegidas
+Entidades blindam seu estado interno com construtores privados e métodos factory estáticos:
 
 ```csharp
-namespace App.Domain.Common;
+namespace App.Domain.MarketPulse;
 
-public interface IDomainEvent { DateTimeOffset OccurredOnUtc { get; } }
-
-public abstract class AggregateRoot<TId> where TId : notnull
+public sealed class CurrencyWatchItem : AggregateRoot<Guid>
 {
-    private readonly List<IDomainEvent> _domainEvents = [];
-    public TId Id { get; protected init; } = default!;
-    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
-    protected void RaiseDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
-    public void ClearDomainEvents() => _domainEvents.Clear();
-}
-```
+    private CurrencyWatchItem() { } // Para o EF Core
 
-### 2.3. Minimal API Limpa com `IEndpoint` e `ProblemDetails` (`App.Api`)
-Mantenha `Program.cs` mínimo e isole cada grupo de rotas:
+    public string BaseCurrency { get; private set; } = null!;
+    public string TargetCurrency { get; private set; } = null!;
+    public decimal TargetRate { get; private set; }
+    public DateTimeOffset CreatedAtUtc { get; private set; }
 
-```csharp
-public interface IEndpoint
-{
-    void MapEndpoint(IEndpointRouteBuilder app);
-}
-
-public static class ResultExtensions
-{
-    public static IResult ToProblemDetails(this Result result)
+    public static Result<CurrencyWatchItem> Create(
+        string baseCurrency,
+        string targetCurrency,
+        decimal targetRate)
     {
-        if (result.IsSuccess) throw new InvalidOperationException("Successful result cannot be mapped to ProblemDetails.");
+        if (string.IsNullOrWhiteSpace(baseCurrency) || baseCurrency.Length != 3)
+            return Result.Failure<CurrencyWatchItem>(Error.Validation("Currency.InvalidBase", "Base currency must be a 3-letter ISO code."));
 
-        var statusCode = result.Error.Type switch
+        if (string.IsNullOrWhiteSpace(targetCurrency) || targetCurrency.Length != 3)
+            return Result.Failure<CurrencyWatchItem>(Error.Validation("Currency.InvalidTarget", "Target currency must be a 3-letter ISO code."));
+
+        if (targetRate <= 0)
+            return Result.Failure<CurrencyWatchItem>(Error.Validation("Currency.InvalidRate", "Target rate must be strictly greater than zero."));
+
+        var item = new CurrencyWatchItem
         {
-            ErrorType.Validation => StatusCodes.Status400BadRequest,
-            ErrorType.NotFound   => StatusCodes.Status404NotFound,
-            ErrorType.Conflict   => StatusCodes.Status409Conflict,
-            ErrorType.Forbidden  => StatusCodes.Status403Forbidden,
-            _                    => StatusCodes.Status500InternalServerError
+            Id = Guid.NewGuid(),
+            BaseCurrency = baseCurrency.ToUpperInvariant(),
+            TargetCurrency = targetCurrency.ToUpperInvariant(),
+            TargetRate = targetRate,
+            CreatedAtUtc = DateTimeOffset.UtcNow
         };
 
-        return Results.Problem(
-            statusCode: statusCode,
-            title: result.Error.Code,
-            detail: result.Error.Description,
-            type: $"https://httpstatuses.com/{statusCode}");
+        item.RaiseDomainEvent(new CurrencyWatchItemCreatedDomainEvent(item.Id, item.BaseCurrency, item.TargetCurrency, item.TargetRate));
+        return Result.Success(item);
     }
 }
 ```
 
-### 2.4. Autenticação Delegada ao Supabase Auth (Custo Zero)
-Valide o JWT emitido pelo Supabase diretamente no ASP.NET Core usando JWKS (`/.well-known/jwks.json` do projeto Supabase):
+---
+
+## 4. Guard Rails de Dados e EF Core (`optimizing-ef-core-queries`)
+
+1. **Leitura Pura com `.AsNoTracking()`**: Sempre use `.AsNoTracking()` em queries de leitura (queries CQRS).
+2. **Projeções Diretas**: Projete para DTOs via `.Select()` antes de materializar com `.ToListAsync(ct)`. Nunca carregue a entidade inteira se precisar de 3 colunas.
+3. **Sem Cartesian Explosion**: Quando houver mais de um `.Include()`, adicione `.AsSplitQuery()` para evitar junções cartesianas gigantescas no PostgreSQL.
+4. **Rastreabilidade**: Adicione `.TagWith("MarketPulse.GetActiveWatchlist")` nas queries para identificá-las no pg_stat_statements e APM.
+5. **Propagação de Cancelamento**: Passe sempre `CancellationToken ct` para métodos de banco (`ToListAsync(ct)`, `FirstOrDefaultAsync(ct)`, `SaveChangesAsync(ct)`).
+
+---
+
+## 5. ASP.NET Core Minimal APIs Limpas (.NET 9+)
+
+1. **Sem Swashbuckle**: Utilize OpenAPI nativo do .NET 9 (`builder.Services.AddOpenApi()` + `app.MapOpenApi()`).
+2. **`TypedResults` Estritos**: Mapeie endpoints usando tipos concretos para gerar schemas estáticos perfeitos sem necessidade de filtros reflexivos pesados:
 
 ```csharp
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        var supabaseUrl = builder.Configuration["Supabase:Url"]!; // ex: https://<project>.supabase.co
-        options.Authority = $"{supabaseUrl}/auth/v1";
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = $"{supabaseUrl}/auth/v1",
-            ValidateAudience = true,
-            ValidAudience = "authenticated",
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromSeconds(30)
-        };
-    });
-
-builder.Services.AddAuthorization();
-```
-Extraia o `UserId` autenticado através de uma porta `ICurrentUserProvider` lendo a claim `ClaimTypes.NameIdentifier` / `"sub"`.
-
-### 2.5. Mensageria RabbitMQ + Transactional Outbox (`MassTransit`)
-Nunca publique eventos diretamente no RabbitMQ fora da transação do banco. Configure o Outbox no `AppDbContext`:
-
-```csharp
-builder.Services.AddMassTransit(x =>
+public sealed class WatchlistEndpoints : IEndpoint
 {
-    x.AddConsumers(typeof(DependencyInjection).Assembly);
-
-    x.AddEntityFrameworkOutbox<AppDbContext>(o =>
+    public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        o.UsePostgres();
-        o.UseBusOutbox();
-    });
+        var group = app.MapGroup("/api/v1/watchlist")
+            .WithTags("Watchlist")
+            .RequireAuthorization();
 
-    x.UsingRabbitMq((context, cfg) =>
+        group.MapPost("/", CreateItemAsync)
+            .WithName("CreateWatchItem")
+            .WithSummary("Registers a new currency alert item.");
+    }
+
+    private static async Task<Results<CreatedAtRoute<WatchItemResponse>, ProblemHttpResult>> CreateItemAsync(
+        CreateWatchItemRequest request,
+        ICreateWatchItemUseCase useCase,
+        CancellationToken ct)
     {
-        cfg.Host(builder.Configuration.GetConnectionString("RabbitMq"));
-        cfg.UseMessageRetry(r => r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(2)));
-        cfg.ConfigureEndpoints(context);
-    });
-});
-```
+        var result = await useCase.ExecuteAsync(request, ct);
+        if (result.IsFailure)
+        {
+            return TypedResults.Problem(
+                statusCode: result.Error.Type switch
+                {
+                    ErrorType.Validation => StatusCodes.Status400BadRequest,
+                    ErrorType.Conflict   => StatusCodes.Status409Conflict,
+                    ErrorType.NotFound   => StatusCodes.Status404NotFound,
+                    _                    => StatusCodes.Status500InternalServerError
+                },
+                title: result.Error.Code,
+                detail: result.Error.Description);
+        }
 
-### 2.6. Cache de Alta Performance e Baixo Custo (`HybridCache`)
-Use `HybridCache` para evitar chamadas repetidas ao PostgreSQL com proteção automática contra *Cache Stampede*:
-
-```csharp
-var dto = await cache.GetOrCreateAsync(
-    $"orders:{userId}:{orderId}",
-    async cancel => await repository.GetByIdAsNoTrackingAsync(orderId, userId, cancel),
-    new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(10), LocalCacheExpiration = TimeSpan.FromMinutes(2) },
-    cancellationToken: ct);
+        return TypedResults.CreatedAtRoute(result.Value, "GetWatchItemById", new { id = result.Value.Id });
+    }
+}
 ```
 
 ---
 
-## 3. Teste de Arquitetura Automatizado (`App.ArchTests`)
-Inclua sempre este teste para garantir em CI que nenhum desenvolvedor quebrou a Arquitetura Hexagonal:
+## 6. Anti-Padrão: Proibição de Sync-Over-Async (`csharp-async`)
 
-```csharp
-[Fact]
-public void Domain_Should_Not_Have_Dependency_On_Other_Projects()
-{
-    var result = Types.InAssembly(typeof(AggregateRoot<>).Assembly)
-        .ShouldNot()
-        .HaveDependencyOnAny("App.Application", "App.Infrastructure", "App.Api", "Microsoft.EntityFrameworkCore", "MassTransit")
-        .GetResult();
+- **NUNCA** chame:
+  - `task.Result`
+  - `task.GetAwaiter().GetResult()`
+  - `task.Wait()`
+- **Sempre utilize `await` e retorne `Task` / `Task<T>`** (ou `ValueTask<T>` em caminhos com alto índice de conclusão síncrona).
+- Propague o parâmetro `CancellationToken ct` até o cliente HTTP, broker e banco de dados para evitar consumo inútil de recursos quando o cliente encerra a conexão.
 
-    result.IsSuccessful.Should().BeTrue();
-}
-```
+---
 
+## 7. Mensageria MassTransit e Transactional Outbox
+
+- **Nunca publique diretamente no RabbitMQ fora da transação**:
+  ```csharp
+  // Registre o EntityFramework Outbox no MassTransit
+  services.AddMassTransit(x =>
+  {
+      x.AddEntityFrameworkOutbox<AppDbContext>(o =>
+      {
+          o.UsePostgres();
+          o.UseBusOutbox();
+      });
+
+      x.UsingRabbitMq((context, cfg) =>
+      {
+          cfg.Host(configuration.GetConnectionString("RabbitMq"));
+          cfg.UseMessageRetry(r => r.Exponential(5, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(2)));
+          cfg.ConfigureEndpoints(context);
+      });
+  });
+  ```
+- **Consumidores Idempotentes**: Mensagens podem ser reentregues em redes instáveis. Armazene o `EventId` ou utilize o Inbox do MassTransit para garantir execução exatamente uma vez.
+
+---
+
+## 8. Bateria de Testes Automatizados (xUnit + Testcontainers)
+
+1. **Arquitetura (`App.ArchTests`)**:
+   ```csharp
+   [Fact]
+   public void Domain_Should_Not_Have_Dependency_On_Other_Projects()
+   {
+       var result = Types.InAssembly(typeof(AggregateRoot<>).Assembly)
+           .ShouldNot()
+           .HaveDependencyOnAny("App.Application", "App.Infrastructure", "App.Api", "Microsoft.EntityFrameworkCore", "MassTransit")
+           .GetResult();
+
+       result.IsSuccessful.Should().BeTrue();
+   }
+   ```
+2. **Integração Real (`App.IntegrationTests`)**:
+   - Utilize containers Docker gerenciados via `Testcontainers.PostgreSql` e `Testcontainers.RabbitMq`.
+   - Inicialize containers em fixtures compartilhadas (`IAsyncLifetime`) para evitar overhead de restart por teste.
