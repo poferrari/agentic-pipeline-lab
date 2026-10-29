@@ -37,6 +37,15 @@ public sealed class CurrencyWatchItemTests
     }
 
     [Fact]
+    public void CurrencyCode_SupportedCurrencies_ShouldExposeValidSet()
+    {
+        CurrencyCode.SupportedCurrencies.Should().Contain(["USD", "EUR", "BRL", "GBP", "JPY"]);
+        CurrencyCode.IsValid("USD").Should().BeTrue();
+        CurrencyCode.IsValid("invalid").Should().BeFalse();
+        CurrencyCode.IsValid(null).Should().BeFalse();
+    }
+
+    [Fact]
     public void CurrencyWatchItem_Create_WithValidParameters_ShouldRaiseCreatedDomainEvent()
     {
         var result = CurrencyWatchItem.Create(
@@ -55,6 +64,28 @@ public sealed class CurrencyWatchItemTests
         item.TargetRate.Value.Should().Be(5.75m);
         item.IsTriggered.Should().BeFalse();
         item.DomainEvents.Should().ContainSingle(e => e is WatchItemCreatedDomainEvent);
+    }
+
+    [Fact]
+    public void CurrencyWatchItem_Create_WithStronglyTypedValueObjects_ShouldSucceed()
+    {
+        var baseCurrency = CurrencyCode.Create("EUR").Value;
+        var targetCurrency = CurrencyCode.Create("USD").Value;
+        var targetRate = TargetRate.Create(1.08m).Value;
+
+        var result = CurrencyWatchItem.Create(
+            ValidOwnerId,
+            baseCurrency,
+            targetCurrency,
+            targetRate,
+            notifyWhenAbove: false,
+            notes: "Buy dip hedge");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BaseCurrency.Should().Be(baseCurrency);
+        result.Value.TargetCurrency.Should().Be(targetCurrency);
+        result.Value.TargetRate.Should().Be(targetRate);
+        result.Value.NotifyWhenAbove.Should().BeFalse();
     }
 
     [Fact]
@@ -91,6 +122,22 @@ public sealed class CurrencyWatchItemTests
     }
 
     [Fact]
+    public void CurrencyWatchItem_Create_WithNotesExceedingLimit_ShouldFail()
+    {
+        var tooLongNotes = new string('A', CurrencyWatchItem.MaxNotesLength + 1);
+        var result = CurrencyWatchItem.Create(
+            ValidOwnerId,
+            "USD",
+            "BRL",
+            5.50m,
+            notifyWhenAbove: true,
+            notes: tooLongNotes);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("WatchItem.NotesTooLong");
+    }
+
+    [Fact]
     public void EvaluateMarketRate_WhenRateMeetsAboveThreshold_ShouldMarkTriggeredAndRaiseDomainEvent()
     {
         var item = CurrencyWatchItem.Create(
@@ -109,5 +156,45 @@ public sealed class CurrencyWatchItemTests
         item.TriggeredAtUtc.Should().NotBeNull();
         item.CalculateSpreadPercentage(5.65m).Should().Be(2.73m);
         item.DomainEvents.OfType<TargetRateTriggeredDomainEvent>().Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData(5.50, 5.60, true, true)]
+    [InlineData(5.50, 5.40, true, false)]
+    [InlineData(5.50, 5.40, false, true)]
+    [InlineData(5.50, 5.60, false, false)]
+    [InlineData(5.50, 5.50, true, true)]
+    [InlineData(5.50, 5.50, false, true)]
+    public void IsTargetRateMet_ShouldEvaluateCorrectly(
+        decimal targetRate,
+        decimal currentRate,
+        bool notifyWhenAbove,
+        bool expectedMet)
+    {
+        var item = CurrencyWatchItem.Create(
+            ValidOwnerId,
+            "USD",
+            "BRL",
+            targetRate,
+            notifyWhenAbove,
+            null).Value;
+
+        item.IsTargetRateMet(currentRate).Should().Be(expectedMet);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(-1, 0)]
+    public void CalculateSpreadPercentage_WithZeroOrNegativeCurrentRate_ShouldReturnZero(decimal rate, decimal expected)
+    {
+        var item = CurrencyWatchItem.Create(
+            ValidOwnerId,
+            "USD",
+            "BRL",
+            5.0m,
+            true,
+            null).Value;
+
+        item.CalculateSpreadPercentage(rate).Should().Be(expected);
     }
 }

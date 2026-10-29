@@ -1,5 +1,4 @@
 using App.Application.Abstractions;
-using App.Application.MarketPulse.Commands.CreateWatchItem;
 using App.Application.MarketPulse.DTOs;
 using App.Domain.Common;
 using App.Domain.MarketPulse.Errors;
@@ -31,6 +30,6 @@ public sealed class GetWatchItemByIdQueryHandler(
             return Result.Failure<WatchItemDto>(MarketPulseErrors.NotFound(query.Id));
         }
 
-        return Result.Success(CreateWatchItemCommandHandler.MapToDto(item));
+        return Result.Success(item.ToDto());
     }
 }

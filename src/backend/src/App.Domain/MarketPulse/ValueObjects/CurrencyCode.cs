@@ -12,11 +12,24 @@ public readonly record struct CurrencyCode
         "NZD", "KRW", "INR", "IDR", "MYR", "PHP", "THB", "ILS", "ISK", "BGN", "RON"
     };
 
+    public static IReadOnlySet<string> SupportedCurrencies => SupportedIsoCurrencies;
+
     public string Value { get; }
 
     private CurrencyCode(string value)
     {
         Value = value;
+    }
+
+    public static bool IsValid(string? rawCode)
+    {
+        if (string.IsNullOrWhiteSpace(rawCode))
+        {
+            return false;
+        }
+
+        var normalized = rawCode.Trim().ToUpperInvariant();
+        return normalized.Length == 3 && SupportedIsoCurrencies.Contains(normalized);
     }
 
     public static Result<CurrencyCode> Create(string? rawCode)

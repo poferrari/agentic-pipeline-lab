@@ -256,16 +256,7 @@ app.MapGet("/", () => TypedResults.Ok(new
 app.MapHealthChecks("/health/live").AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 
-var endpoints = typeof(Program).Assembly
-    .GetTypes()
-    .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(IEndpoint).IsAssignableFrom(t))
-    .Select(Activator.CreateInstance)
-    .Cast<IEndpoint>();
-
-foreach (var endpoint in endpoints)
-{
-    endpoint.MapEndpoint(app);
-}
+app.MapEndpoints();
 
 if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Database")))
 {

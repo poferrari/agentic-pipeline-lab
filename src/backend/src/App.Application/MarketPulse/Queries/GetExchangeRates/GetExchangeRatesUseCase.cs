@@ -13,9 +13,9 @@ public sealed class GetExchangeRatesQueryValidator : AbstractValidator<GetExchan
     public GetExchangeRatesQueryValidator()
     {
         RuleFor(x => x.BaseCurrency)
-            .NotEmpty()
-            .Length(3)
-            .Must(code => CurrencyCode.Create(code).IsSuccess)
+            .NotEmpty().WithMessage("BaseCurrency is required.")
+            .Length(3).WithMessage("BaseCurrency must be a 3-letter ISO code.")
+            .Must(CurrencyCode.IsValid)
             .WithMessage("BaseCurrency must be a valid 3-letter ISO-4217 currency code.");
     }
 }
@@ -28,6 +28,8 @@ public sealed class GetExchangeRatesQueryHandler(
         GetExchangeRatesQuery query,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
+
         var validation = await validator.ValidateAsync(query, ct);
         if (!validation.IsValid)
         {
@@ -41,11 +43,15 @@ public sealed class GetExchangeRatesQueryHandler(
             return Result.Failure<ExchangeRatesQuoteDto>(currencyResult.Error);
         }
 
+        var baseCode = currencyResult.Value.Value;
         IReadOnlyCollection<string>? parsedSymbols = null;
+
         if (!string.IsNullOrWhiteSpace(query.Symbols))
         {
-            var list = new List<string>();
-            foreach (var raw in query.Symbols.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            var uniqueSymbols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var rawTokens = query.Symbols.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var raw in rawTokens)
             {
                 var symbolCheck = CurrencyCode.Create(raw);
                 if (symbolCheck.IsFailure)
@@ -53,15 +59,26 @@ public sealed class GetExchangeRatesQueryHandler(
                     return Result.Failure<ExchangeRatesQuoteDto>(symbolCheck.Error);
                 }
 
-                if (symbolCheck.Value != currencyResult.Value)
+                if (!string.Equals(symbolCheck.Value.Value, baseCode, StringComparison.OrdinalIgnoreCase))
                 {
-                    list.Add(symbolCheck.Value.Value);
+                    uniqueSymbols.Add(symbolCheck.Value.Value);
                 }
             }
 
-            parsedSymbols = list;
+            // Edge case: User explicitly requested symbols, but all of them were identical to base currency
+            if (rawTokens.Length > 0 && uniqueSymbols.Count == 0)
+            {
+                return Result.Success(new ExchangeRatesQuoteDto(
+                    baseCode,
+                    DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    "Internal-SameCurrency",
+                    new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) { [baseCode] = 1.0m },
+                    DateTimeOffset.UtcNow));
+            }
+
+            parsedSymbols = uniqueSymbols;
         }
 
-        return await exchangeProvider.GetLatestRatesAsync(currencyResult.Value.Value, parsedSymbols, ct);
+        return await exchangeProvider.GetLatestRatesAsync(baseCode, parsedSymbols, ct);
     }
 }

@@ -24,11 +24,13 @@ public sealed class CreateWatchItemCommandValidator : AbstractValidator<CreateWa
     {
         RuleFor(x => x.BaseCurrency)
             .NotEmpty().WithMessage("Base currency is required.")
-            .Length(3).WithMessage("Base currency must be a 3-letter ISO code.");
+            .Length(3).WithMessage("Base currency must be a 3-letter ISO code.")
+            .Must(CurrencyCode.IsValid).WithMessage(x => $"The currency code '{x.BaseCurrency}' is not supported.");
 
         RuleFor(x => x.TargetCurrency)
             .NotEmpty().WithMessage("Target currency is required.")
-            .Length(3).WithMessage("Target currency must be a 3-letter ISO code.");
+            .Length(3).WithMessage("Target currency must be a 3-letter ISO code.")
+            .Must(CurrencyCode.IsValid).WithMessage(x => $"The currency code '{x.TargetCurrency}' is not supported.");
 
         RuleFor(x => x)
             .Must(x => !string.Equals(x.BaseCurrency?.Trim(), x.TargetCurrency?.Trim(), StringComparison.OrdinalIgnoreCase))
@@ -39,7 +41,8 @@ public sealed class CreateWatchItemCommandValidator : AbstractValidator<CreateWa
             .LessThanOrEqualTo(TargetRate.MaxAllowedRate).WithMessage("Target rate exceeds realistic boundary.");
 
         RuleFor(x => x.Notes)
-            .MaximumLength(CurrencyWatchItem.MaxNotesLength).WithMessage("Notes must not exceed 500 characters.");
+            .MaximumLength(CurrencyWatchItem.MaxNotesLength)
+            .WithMessage($"Notes must not exceed {CurrencyWatchItem.MaxNotesLength} characters.");
     }
 }
 
@@ -63,6 +66,15 @@ public sealed class CreateWatchItemCommandHandler(
             return Result.Failure<WatchItemDto>(MarketPulseErrors.InvalidOwner);
         }
 
+        // 1. Fail-fast input validation before instantiating domain models
+        var validationResult = await validator.ValidateAsync(command, ct);
+        if (!validationResult.IsValid)
+        {
+            return Result.Failure<WatchItemDto>(
+                Error.Validation("WatchItem.ValidationFailed", validationResult.Errors[0].ErrorMessage));
+        }
+
+        // 2. Domain Model creation enforcing domain invariants
         var watchItemResult = CurrencyWatchItem.Create(
             ownerId,
             command.BaseCurrency,
@@ -76,15 +88,9 @@ public sealed class CreateWatchItemCommandHandler(
             return Result.Failure<WatchItemDto>(watchItemResult.Error);
         }
 
-        var validationResult = await validator.ValidateAsync(command, ct);
-        if (!validationResult.IsValid)
-        {
-            return Result.Failure<WatchItemDto>(
-                Error.Validation("WatchItem.ValidationFailed", validationResult.Errors[0].ErrorMessage));
-        }
-
         var watchItem = watchItemResult.Value;
 
+        // 3. Duplicate check for this user
         var alreadyExists = await repository.ExistsByPairAsync(
             ownerId,
             watchItem.BaseCurrency,
@@ -97,6 +103,7 @@ public sealed class CreateWatchItemCommandHandler(
                 MarketPulseErrors.DuplicatePair(watchItem.BaseCurrency.Value, watchItem.TargetCurrency.Value));
         }
 
+        // 4. Enrich with live ECB exchange rate if available
         var quoteResult = await exchangeProvider.GetLatestRatesAsync(
             watchItem.BaseCurrency.Value,
             [watchItem.TargetCurrency.Value],
@@ -115,7 +122,7 @@ public sealed class CreateWatchItemCommandHandler(
         var correlationId = Activity.Current?.GetTagItem("correlation.id")?.ToString()
             ?? Activity.Current?.TraceId.ToString();
 
-        // Transactional Outbox Pattern: the event is published to the DbContext outbox in the same transaction
+        // 5. Transactional Outbox Pattern: stage event into DbContext outbox in same transaction
         await eventBusPublisher.PublishAsync(
             new CurrencyAlertNotificationEvent(
                 Guid.CreateVersion7(),
@@ -135,26 +142,6 @@ public sealed class CreateWatchItemCommandHandler(
         await unitOfWork.SaveChangesAsync(ct);
         watchItem.ClearDomainEvents();
 
-        return Result.Success(MapToDto(watchItem));
-    }
-
-    internal static WatchItemDto MapToDto(CurrencyWatchItem item)
-    {
-        var currentRate = item.LastKnownRate;
-        var spread = currentRate.HasValue ? item.CalculateSpreadPercentage(currentRate.Value) : 0m;
-
-        return new WatchItemDto(
-            item.Id,
-            item.OwnerId,
-            item.BaseCurrency.Value,
-            item.TargetCurrency.Value,
-            item.TargetRate.Value,
-            currentRate,
-            spread,
-            item.NotifyWhenAbove,
-            item.IsTriggered,
-            item.Notes,
-            item.CreatedAtUtc,
-            item.TriggeredAtUtc);
+        return Result.Success(watchItem.ToDto());
     }
 }
