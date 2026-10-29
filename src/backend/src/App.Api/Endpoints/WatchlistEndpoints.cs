@@ -1,3 +1,4 @@
+using App.Api.Diagnostics;
 using App.Application.MarketPulse.Commands.CreateWatchItem;
 using App.Application.MarketPulse.Commands.DeleteWatchItem;
 using App.Application.MarketPulse.DTOs;
@@ -28,6 +29,10 @@ public sealed class WatchlistEndpoints : IEndpoint
             CreateWatchItemCommandHandler handler,
             CancellationToken ct) =>
         {
+            using var activity = MarketPulseDiagnostics.ActivitySource.StartActivity("Watchlist.CreateItem");
+            activity?.SetTag("currency.base", request.BaseCurrency);
+            activity?.SetTag("currency.target", request.TargetCurrency);
+
             var command = new CreateWatchItemCommand(
                 request.BaseCurrency,
                 request.TargetCurrency,
@@ -36,9 +41,17 @@ public sealed class WatchlistEndpoints : IEndpoint
                 request.Notes);
 
             var result = await handler.HandleAsync(command, ct);
-            return result.IsSuccess
-                ? TypedResults.Created($"/api/v1/watchlist/{result.Value.Id}", result.Value)
-                : result.ToProblemDetails();
+
+            if (result.IsSuccess)
+            {
+                MarketPulseDiagnostics.WatchlistCreatedCounter.Add(1,
+                    new KeyValuePair<string, object?>("currency.base", request.BaseCurrency.ToUpperInvariant()),
+                    new KeyValuePair<string, object?>("currency.target", request.TargetCurrency.ToUpperInvariant()));
+
+                return TypedResults.Created($"/api/v1/watchlist/{result.Value.Id}", result.Value);
+            }
+
+            return result.ToProblemDetails();
         })
         .WithName("CreateWatchItem")
         .WithSummary("Creates a new currency watch alert for the authenticated user.")
@@ -85,10 +98,18 @@ public sealed class WatchlistEndpoints : IEndpoint
             DeleteWatchItemCommandHandler handler,
             CancellationToken ct) =>
         {
+            using var activity = MarketPulseDiagnostics.ActivitySource.StartActivity("Watchlist.DeleteItem");
+            activity?.SetTag("watchlist.item_id", id.ToString());
+
             var result = await handler.HandleAsync(new DeleteWatchItemCommand(id), ct);
-            return result.IsSuccess
-                ? TypedResults.NoContent()
-                : result.ToProblemDetails();
+
+            if (result.IsSuccess)
+            {
+                MarketPulseDiagnostics.WatchlistDeletedCounter.Add(1);
+                return TypedResults.NoContent();
+            }
+
+            return result.ToProblemDetails();
         })
         .WithName("DeleteWatchItem")
         .WithSummary("Deletes a specific currency watch alert owned by the authenticated user (BOLA-protected).")

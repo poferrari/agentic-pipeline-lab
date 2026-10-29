@@ -96,6 +96,7 @@ Consulte e acione os recursos abaixo conforme a etapa do processo:
   - `frontend-api-architecture`: Arquitetura Frontend moderna orientada a consumo de REST API, TanStack Query, OpenAPI codegen e testes com MSW/Vitest.
   - `owasp-quality-gate`: Checklist executável de segurança OWASP, lint, cobertura de testes e revisão de código automatizada.
   - `pr-delivery-automation`: Como preparar commits semânticos, rodar a bateria de validação local/CI e abrir PRs detalhados no GitHub.
+  - `sre-observability-telemetry`: Padrões e runbooks de SRE, OpenTelemetry (Tracing, Metrics e Structured Logging), Grafana / Aspire Dashboard e RCA.
   - `run-agentic-pipeline`: Orquestração automatizada multi-agente de ponta a ponta.
 - **Documentação e Templates (`docs/`)**:
   - `docs/pipeline/DEFINITION_OF_READY.md` & `docs/pipeline/DEFINITION_OF_DONE.md`

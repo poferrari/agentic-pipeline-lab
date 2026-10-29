@@ -42,6 +42,22 @@ public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFact
         readyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         liveResponse.Headers.Should().ContainKey("X-Content-Type-Options");
         liveResponse.Headers.Should().ContainKey("X-Frame-Options");
+        liveResponse.Headers.Should().ContainKey("X-Correlation-Id");
+        liveResponse.Headers.Should().ContainKey("X-Trace-Id");
+    }
+
+    [Fact]
+    public async Task TelemetryMiddleware_ShouldPreserveIncomingCorrelationIdAndInjectTraceId()
+    {
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/health/live", UriKind.Relative));
+        request.Headers.Add("X-Correlation-Id", "client-trace-12345");
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.GetValues("X-Correlation-Id").Should().Contain("client-trace-12345");
+        response.Headers.Should().ContainKey("X-Trace-Id");
     }
 
     [Fact]

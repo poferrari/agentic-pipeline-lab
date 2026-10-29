@@ -14,6 +14,7 @@ services:
       ConnectionStrings__RabbitMq: "amqp://guest:guest@rabbitmq:5672"
       ExternalApis__FrankfurterBaseUrl: "https://api.frankfurter.app/"
       Auth__AllowDemoHeader: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:4317"
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +56,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+    container_name: marketpulse_lab_dashboard
+    restart: unless-stopped
+    ports:
+      - "18888:18888"
+      - "4317:4317"
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+      DOTNET_DASHBOARD_OTLP_ENDPOINT_URL: "http://+:4317"
 
 volumes:
   marketpulse_pg_data:
