@@ -247,6 +247,10 @@ public sealed class WatchlistEndpoints : IEndpoint
       {
           o.UsePostgres();
           o.UseBusOutbox();
+          o.QueryDelay = TimeSpan.FromSeconds(1);
+          o.DuplicateDetectionWindow = TimeSpan.FromMinutes(30); // Prevents table bloat
+          o.QueryMessageLimit = 100;
+          o.QueryTimeout = TimeSpan.FromSeconds(30);
       });
 
       x.UsingRabbitMq((context, cfg) =>
