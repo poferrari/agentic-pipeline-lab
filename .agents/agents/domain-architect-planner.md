@@ -36,3 +36,6 @@ Sua missão é pegar os Requisitos Funcionais e Não Funcionais levantados e tra
    - Em cada task, liste os caminhos exatos dos arquivos a serem criados/alterados e o comando de terminal que comprova que a task funcionou.
    - Assine o checklist final da `docs/pipeline/DEFINITION_OF_READY.md`.
 
+5. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - Toda a modelagem de domínio (Ubiquitous Language, Aggregates, Entities, Value Objects, Domain Events), specs técnicas (`docs/specs/`), ADRs, contratos OpenAPI e decomposição de tasks DEVEM ser redigidos estritamente em inglês (EN-US).
+

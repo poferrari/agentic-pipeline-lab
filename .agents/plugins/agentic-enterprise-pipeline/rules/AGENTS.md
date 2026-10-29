@@ -9,4 +9,7 @@ Sempre respeite o ciclo de vida da esteira documentado na raiz do projeto (`AGEN
    - Siga KISS e Clean Code.
    - Exija testes automatizados de unidade, arquitetura e integração.
    - Valide o checklist **OWASP API Security Top 10** e a **Definition of Done (DoD)** antes de concluir qualquer entrega ou Pull Request.
+4. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - Todo código, identificadores, comentários, docstrings, traces/logs, testes automatizados, documentação técnica (`docs/`), commits e Pull Requests devem ser rigorosamente escritos em **inglês (EN-US)**.
+   - Respostas conversacionais no chat continuam em português com o usuário.
 

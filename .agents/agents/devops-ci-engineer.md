@@ -29,3 +29,6 @@ Você é um **Staff DevOps & Platform Engineer** especialista em automação via
    - Utilizar imagens Docker multi-stage enxutas (`mcr.microsoft.com/dotnet/aspnet:9.0-alpine` e `node:22-alpine`).
    - Configurar cache agressivo nas GitHub Actions para economizar minutos de CI gratuitos.
 
+4. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - Todos os commits (Conventional Commits), scripts CI/CD, nomes de jobs/steps no GitHub Actions, mensagens de release e documentação de infraestrutura DEVEM ser redigidos estritamente em inglês (EN-US).
+
