@@ -6,6 +6,7 @@ using App.Infrastructure.ExternalApis.Frankfurter;
 using App.Infrastructure.Messaging;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Persistence.Repositories;
+using App.Infrastructure.RateLimiting;
 using App.Infrastructure.Security;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -48,13 +49,18 @@ public static class DependencyInjection
         var frankfurterBaseUrl = configuration["ExternalApis:FrankfurterBaseUrl"]
             ?? "https://api.frankfurter.app/";
 
+        services.Configure<LeakyBucketOptions>(
+            configuration.GetSection(LeakyBucketOptions.SectionName));
+        services.AddTransient<OutboundLeakyBucketHandler>();
+
         services.AddHttpClient<IMarketExchangeProvider, FrankfurterExchangeAdapter>(client =>
         {
             client.BaseAddress = new Uri(frankfurterBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(5);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
             client.DefaultRequestHeaders.Add("User-Agent", "MarketPulseLab-HexagonalApi/1.0");
-        });
+        })
+        .AddHttpMessageHandler<OutboundLeakyBucketHandler>();
 
         var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMq");
         var retryLimit = configuration.GetValue("Messaging:Retry:Limit", 10);
