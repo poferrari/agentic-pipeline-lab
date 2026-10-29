@@ -3,18 +3,32 @@ using System.Net.Http.Json;
 using App.Api.Endpoints;
 using App.Api.Middleware;
 using App.Application.MarketPulse.DTOs;
+using App.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace App.IntegrationTests;
 
-public sealed class MarketPulseApiIntegrationTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFactory factory)
+    : IClassFixture<MarketPulseTestcontainersFactory>
 {
     private static readonly Guid UserAId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static readonly Guid UserBId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+    [Fact]
+    public void TestEnvironment_Should_Be_Properly_Configured()
+    {
+        factory.Should().NotBeNull();
+        if (factory.IsDockerEnvironmentActive)
+        {
+            Assert.True(factory.IsDockerEnvironmentActive, "Running with real PostgreSQL and RabbitMQ Testcontainers.");
+        }
+        else
+        {
+            Assert.False(factory.IsDockerEnvironmentActive, "Running in Adaptive In-Memory mode (Docker daemon offline on current host).");
+        }
+    }
 
     [Fact]
     public async Task HealthChecks_And_SecurityHeaders_ShouldReturn200OkWithOwaspHeaders()

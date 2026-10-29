@@ -1,0 +1,116 @@
+using App.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Testcontainers.PostgreSql;
+using Testcontainers.RabbitMq;
+using Xunit;
+
+namespace App.IntegrationTests.Infrastructure;
+
+public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Program>, IAsyncLifetime
+{
+    private readonly PostgreSqlContainer? _postgresContainer;
+    private readonly RabbitMqContainer? _rabbitMqContainer;
+
+    public bool IsDockerEnvironmentActive { get; private set; }
+
+    public MarketPulseTestcontainersFactory()
+    {
+        try
+        {
+            _postgresContainer = new PostgreSqlBuilder()
+                .WithImage("postgres:17-alpine")
+                .WithDatabase("marketpulse_test_db")
+                .WithUsername("postgres")
+                .WithPassword("postgres_test_password")
+                .Build();
+
+            _rabbitMqContainer = new RabbitMqBuilder()
+                .WithImage("rabbitmq:4-management-alpine")
+                .WithUsername("guest")
+                .WithPassword("guest")
+                .Build();
+        }
+        catch
+        {
+            _postgresContainer = null;
+            _rabbitMqContainer = null;
+        }
+    }
+
+    public async Task InitializeAsync()
+    {
+        if (_postgresContainer is not null && _rabbitMqContainer is not null)
+        {
+            try
+            {
+                await _postgresContainer.StartAsync().ConfigureAwait(false);
+                await _rabbitMqContainer.StartAsync().ConfigureAwait(false);
+                IsDockerEnvironmentActive = true;
+
+                // Ensure the database schema is created in the real PostgreSQL container
+                using var scope = Services.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                await dbContext.Database.EnsureCreatedAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // Docker daemon is not active on host machine; fallback to adaptive In-Memory mode
+                IsDockerEnvironmentActive = false;
+            }
+        }
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.ConfigureAppConfiguration((_, configBuilder) =>
+        {
+            var testConfig = new Dictionary<string, string?>
+            {
+                ["Auth:AllowDemoHeader"] = "true"
+            };
+
+            if (IsDockerEnvironmentActive && _postgresContainer is not null && _rabbitMqContainer is not null)
+            {
+                testConfig["ConnectionStrings:Database"] = _postgresContainer.GetConnectionString();
+                testConfig["ConnectionStrings:RabbitMq"] = _rabbitMqContainer.GetConnectionString();
+            }
+
+            configBuilder.AddInMemoryCollection(testConfig);
+        });
+    }
+
+    public new async Task DisposeAsync()
+    {
+        if (_postgresContainer is not null)
+        {
+            try
+            {
+                await _postgresContainer.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+
+        if (_rabbitMqContainer is not null)
+        {
+            try
+            {
+                await _rabbitMqContainer.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+        }
+
+        await base.DisposeAsync().ConfigureAwait(false);
+    }
+}
