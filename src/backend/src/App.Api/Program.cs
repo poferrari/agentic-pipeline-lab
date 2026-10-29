@@ -7,6 +7,8 @@ using App.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -21,11 +23,43 @@ builder.Services.AddHealthChecks();
 var otelResource = ResourceBuilder.CreateDefault()
     .AddService(serviceName: MarketPulseDiagnostics.ServiceName, serviceVersion: MarketPulseDiagnostics.ServiceVersion);
 
+Action<OtlpExporterOptions> configureOtlp = opt =>
+{
+    var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+    if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+    {
+        opt.Endpoint = new Uri(otlpEndpoint);
+    }
+
+    var protocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"];
+    if (string.Equals(protocol, "http/protobuf", StringComparison.OrdinalIgnoreCase))
+    {
+        opt.Protocol = OtlpExportProtocol.HttpProtobuf;
+    }
+    else if (string.Equals(protocol, "grpc", StringComparison.OrdinalIgnoreCase))
+    {
+        opt.Protocol = OtlpExportProtocol.Grpc;
+    }
+
+    var headers = builder.Configuration["OTEL_EXPORTER_OTLP_HEADERS"];
+    if (!string.IsNullOrWhiteSpace(headers))
+    {
+        opt.Headers = headers;
+    }
+};
+
+builder.Services.Configure<OpenTelemetryLoggerOptions>(options =>
+{
+    options.IncludeFormattedMessage = true;
+    options.IncludeScopes = true;
+});
+
 builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(serviceName: MarketPulseDiagnostics.ServiceName, serviceVersion: MarketPulseDiagnostics.ServiceVersion))
     .WithTracing(tracing =>
     {
-        tracing.SetResourceBuilder(otelResource)
-            .AddSource(MarketPulseDiagnostics.ServiceName)
+        tracing.AddSource(MarketPulseDiagnostics.ServiceName)
             .AddAspNetCoreInstrumentation(options =>
             {
                 options.RecordException = true;
@@ -38,7 +72,7 @@ builder.Services.AddOpenTelemetry()
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            tracing.AddOtlpExporter(opt => opt.Endpoint = new Uri(otlpEndpoint));
+            tracing.AddOtlpExporter(configureOtlp);
         }
         else if (builder.Environment.IsDevelopment())
         {
@@ -47,19 +81,26 @@ builder.Services.AddOpenTelemetry()
     })
     .WithMetrics(metrics =>
     {
-        metrics.SetResourceBuilder(otelResource)
-            .AddMeter(MarketPulseDiagnostics.ServiceName)
+        metrics.AddMeter(MarketPulseDiagnostics.ServiceName)
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation();
 
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            metrics.AddOtlpExporter(opt => opt.Endpoint = new Uri(otlpEndpoint));
+            metrics.AddOtlpExporter(configureOtlp);
         }
         else if (builder.Environment.IsDevelopment())
         {
             metrics.AddConsoleExporter();
+        }
+    })
+    .WithLogging(logging =>
+    {
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            logging.AddOtlpExporter(configureOtlp);
         }
     });
 

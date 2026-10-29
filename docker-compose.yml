@@ -14,7 +14,9 @@ services:
       ConnectionStrings__RabbitMq: "amqp://guest:guest@rabbitmq:5672"
       ExternalApis__FrankfurterBaseUrl: "https://api.frankfurter.app/"
       Auth__AllowDemoHeader: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:4317"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://aspire-dashboard:4317}"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}"
+      OTEL_EXPORTER_OTLP_HEADERS: "${OTEL_EXPORTER_OTLP_HEADERS:-}"
     depends_on:
       postgres:
         condition: service_healthy
