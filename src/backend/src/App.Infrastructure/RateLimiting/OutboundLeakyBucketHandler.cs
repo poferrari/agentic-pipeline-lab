@@ -73,15 +73,17 @@ public sealed class OutboundLeakyBucketHandler : DelegatingHandler
         {
             lease = await _limiter.AcquireAsync(permitCount: 1, linkedCts.Token);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
+                ex,
                 "Outbound request to {Uri} timed out after {Timeout}s waiting in the Leaky Bucket queue.",
                 request.RequestUri,
                 _maxWaitTimeout.TotalSeconds);
 
             throw new LeakyBucketTimeoutException(
-                $"Outbound request timed out after {_maxWaitTimeout.TotalSeconds}s waiting in the Leaky Bucket buffer.");
+                $"Outbound request timed out after {_maxWaitTimeout.TotalSeconds}s waiting in the Leaky Bucket buffer.",
+                ex);
         }
 
         using (lease)
@@ -110,4 +112,3 @@ public sealed class OutboundLeakyBucketHandler : DelegatingHandler
         base.Dispose(disposing);
     }
 }
-

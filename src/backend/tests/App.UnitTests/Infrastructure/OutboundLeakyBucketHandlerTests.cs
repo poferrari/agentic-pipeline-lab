@@ -105,7 +105,7 @@ public sealed class OutboundLeakyBucketHandlerTests
         await task1;
 
         // 2nd request: queues in the buffer (capacity = 1)
-        var task2 = invoker.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://api.frankfurter.app/latest"), CancellationToken.None);
+        _ = invoker.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://api.frankfurter.app/latest"), CancellationToken.None);
 
         // 3rd request: exceeds queue limit -> immediate overflow rejection
         var act = async () => await invoker.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://api.frankfurter.app/latest"), CancellationToken.None);

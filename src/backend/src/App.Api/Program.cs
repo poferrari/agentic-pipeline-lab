@@ -26,9 +26,6 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
-var otelResource = ResourceBuilder.CreateDefault()
-    .AddService(serviceName: MarketPulseDiagnostics.ServiceName, serviceVersion: MarketPulseDiagnostics.ServiceVersion);
-
 Action<OtlpExporterOptions, string> configureOtlp = (opt, signalPath) =>
 {
     var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
@@ -297,13 +294,13 @@ public partial class Program
         if (httpContext.Request.Headers.TryGetValue("CF-Connecting-IP", out var cfIp) &&
             !string.IsNullOrWhiteSpace(cfIp.FirstOrDefault()))
         {
-            return $"cf-ip:{cfIp.First()!.Trim()}";
+            return $"cf-ip:{cfIp[0]!.Trim()}";
         }
 
         if (httpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor) &&
             !string.IsNullOrWhiteSpace(forwardedFor.FirstOrDefault()))
         {
-            var clientIp = forwardedFor.First()!.Split(',')[0].Trim();
+            var clientIp = forwardedFor[0]!.Split(',')[0].Trim();
             if (!string.IsNullOrWhiteSpace(clientIp))
             {
                 return $"xff-ip:{clientIp}";

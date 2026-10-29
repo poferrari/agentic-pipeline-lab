@@ -59,12 +59,9 @@ public sealed class MassTransitEventBusPublisher(
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "EventBus [PUBLISH_FAILED] Error staging event {EventType} [CorrelationId: {CorrelationId}]",
-                eventType,
-                correlationId);
-            throw;
+            throw new InvalidOperationException(
+                $"EventBus failed to stage or publish event {eventType} [CorrelationId: {correlationId}]",
+                ex);
         }
     }
 }
@@ -204,14 +201,9 @@ public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger)
                 new KeyValuePair<string, object?>("event_type", "CurrencyAlertNotificationEvent"),
                 new KeyValuePair<string, object?>("status", "error"));
 
-            logger.LogError(
-                ex,
-                "EventBus [CONSUME_FAILED] Error processing CurrencyAlert for WatchItem {WatchItemId} after {ElapsedMs}ms [EventId: {EventId}, CorrelationId: {CorrelationId}]",
-                message.WatchItemId,
-                stopwatch.ElapsedMilliseconds,
-                eventId,
-                correlationId);
-            throw;
+            throw new InvalidOperationException(
+                $"Error processing CurrencyAlert for WatchItem {message.WatchItemId} after {stopwatch.ElapsedMilliseconds}ms [EventId: {eventId}, CorrelationId: {correlationId}]",
+                ex);
         }
     }
 }
@@ -219,45 +211,36 @@ public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger)
 /// <summary>
 /// Fault / Dead-Letter Consumer.
 /// Captures messages routed to the error/dead-letter queue after all exponential retries have been exhausted.
-/// Inspects metadata, exception reasons, and increments dead-letter metrics.
 /// </summary>
 public sealed class CurrencyAlertFaultConsumer(ILogger<CurrencyAlertFaultConsumer> logger)
-    : IConsumer<Fault<CurrencyAlertNotificationEvent>>, IConsumer<Fault<ICurrencyAlertConsumerContract>>
+    : IConsumer<Fault<CurrencyAlertNotificationEvent>>
 {
-    private static readonly ConcurrentDictionary<Guid, DateTimeOffset> FaultedEvents = new();
+    private static readonly ConcurrentBag<Guid> CapturedDeadLetterEventIds = [];
 
-    public static bool IsEventFaulted(Guid eventId) => FaultedEvents.ContainsKey(eventId);
-    public static void ResetTracking() => FaultedEvents.Clear();
+    public static bool HasCapturedFault(Guid eventId) => CapturedDeadLetterEventIds.Contains(eventId);
+    public static bool IsEventFaulted(Guid eventId) => CapturedDeadLetterEventIds.Contains(eventId);
+    public static void ResetTracking() => CapturedDeadLetterEventIds.Clear();
 
     public Task Consume(ConsumeContext<Fault<CurrencyAlertNotificationEvent>> context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return ConsumeFaultCore(context, context.Message.Message.EventId, context.Message.Message.WatchItemId, context.Message.Exceptions, context.Message.Message.CorrelationId);
-    }
 
-    public Task Consume(ConsumeContext<Fault<ICurrencyAlertConsumerContract>> context)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        return ConsumeFaultCore(context, context.Message.Message.EventId, context.Message.Message.WatchItemId, context.Message.Exceptions, context.Message.Message.CorrelationId);
-    }
+        var originalMessage = context.Message.Message;
+        var eventId = originalMessage.EventId;
+        var exceptions = context.Message.Exceptions;
 
-    private Task ConsumeFaultCore(ConsumeContext context, Guid eventId, Guid watchItemId, ExceptionInfo[] exceptionsList, string? msgCorrelationId)
-    {
-        var exceptions = string.Join("; ", exceptionsList.Select(x => x.Message));
-        var correlationId = context.CorrelationId?.ToString() ?? msgCorrelationId ?? "untracked";
-
-        logger.LogError(
-            "EventBus [DEAD_LETTER_FAULT] Message for WatchItem {WatchItemId} routed to Dead Letter Queue (marketpulse.currency-alerts_error) after exhausting retries. Fault: {Exceptions} [EventId: {EventId}, CorrelationId: {CorrelationId}]",
-            watchItemId,
-            exceptions,
-            eventId,
-            correlationId);
+        CapturedDeadLetterEventIds.Add(eventId);
 
         MarketPulseDiagnostics.MessagingDeadLetterCounter.Add(1,
-            new KeyValuePair<string, object?>("queue", "marketpulse.currency-alerts_error"),
-            new KeyValuePair<string, object?>("status", "dead_lettered"));
+            new KeyValuePair<string, object?>("event_type", "CurrencyAlertNotificationEvent"),
+            new KeyValuePair<string, object?>("routing", "dead_letter_queue"));
 
-        FaultedEvents.TryAdd(eventId, DateTimeOffset.UtcNow);
+        logger.LogError(
+            "EventBus [DEAD_LETTER_CAPTURED] Message {EventId} for WatchItem {WatchItemId} permanently failed after retries. Routed to DLQ/Error queue. Primary fault: {FaultMessage}",
+            eventId,
+            originalMessage.WatchItemId,
+            exceptions.Length > 0 ? exceptions[0].Message : "Unknown");
+
         return Task.CompletedTask;
     }
 }

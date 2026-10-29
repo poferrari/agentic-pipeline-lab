@@ -19,29 +19,55 @@ concurrency:
 
 jobs:
   # ============================================================================
-  # 1. BACKEND (.NET 9 C# Minimal API + Hexagonal + DDD + PostgreSQL + RabbitMQ)
+  # 1. BACKEND (.NET 9 C# Minimal API + Hexagonal + DDD + SonarCloud + Coverage)
   # ============================================================================
   backend-quality-and-tests:
-    name: "Backend (.NET 9 C#): Lint, Strict Build & Test Suites"
+    name: "Backend (.NET 9 C#): Lint, SonarCloud, Strict Build & Test Suites"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: src/backend
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Repository with Full History
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 21 (SonarCloud Requirement)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "zulu"
 
       - name: Setup .NET 9.0
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
 
+      - name: Install SonarScanner and ReportGenerator
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+
       - name: Restore Dependencies
         run: dotnet restore MarketPulse.sln
 
       - name: Verify Code Formatting (dotnet format)
         run: dotnet format MarketPulse.sln --verify-no-changes --no-restore
+
+      - name: Begin SonarCloud Scanner
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet-sonarscanner begin \
+            /k:"poferrari_agentic-pipeline-lab" \
+            /o:"poferrari" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml" \
+            /d:sonar.cs.vstest.reportsPaths="**/TestResults/**/*.trx" \
+            /d:sonar.coverage.exclusions="**/tests/**,**/Program.cs,**/AppDbContext.cs"
 
       - name: Build Solution (Zero Warnings Allowed = -warnaserror)
         run: dotnet build MarketPulse.sln --configuration Release --no-restore -warnaserror
@@ -61,14 +87,36 @@ jobs:
             --logger "trx;LogFileName=test-results.trx" \
             --logger "console;verbosity=normal" \
             --collect:"XPlat Code Coverage" \
-            --results-directory ./TestResults
+            --results-directory ./TestResults \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: End SonarCloud Scanner & Upload Quality Metrics
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Generate Code Coverage Markdown Report
+        if: always()
+        run: |
+          reportgenerator \
+            -reports:"**/TestResults/**/coverage.opencover.xml" \
+            -targetdir:"./CoverageReport" \
+            -reporttypes:"MarkdownSummaryGithub;Badges"
+          if [ -f "./CoverageReport/SummaryGithub.md" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 📊 Test Coverage Breakdown" >> $GITHUB_STEP_SUMMARY
+            cat ./CoverageReport/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Generate GitHub Step Summary Report
         if: always()
         run: |
           echo "## 🧪 Automated Test Suite Report (.NET 9 Hexagonal DDD)" >> $GITHUB_STEP_SUMMARY
           echo "- **Strict Build (\`-warnaserror\`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
-          echo "- **Suites Executed**: \`App.UnitTests\` (19 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (13 tests — Outbox, Idempotency, Exponential Retry, DLQ)" >> $GITHUB_STEP_SUMMARY
+          echo "- **SonarCloud Quality Gate**: ✅ Results reported to \`https://sonarcloud.io/project/overview?id=poferrari_agentic-pipeline-lab\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Suites Executed**: \`App.UnitTests\` (38 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (19 tests — Outbox, Idempotency, Exponential Retry, DLQ)" >> $GITHUB_STEP_SUMMARY
           echo "- **Testcontainers**: ✅ Real Docker Containers for PostgreSQL 17 & RabbitMQ 4 (AMQP 0-9-1) with Single Collection Fixture Lifecycle" >> $GITHUB_STEP_SUMMARY
           echo "- **Public API Integration**: \`https://api.frankfurter.app\` (ECB Exchange Rates) + \`HybridCache\`" >> $GITHUB_STEP_SUMMARY
 
