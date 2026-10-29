@@ -51,7 +51,7 @@ The system strictly adheres to **Hexagonal Architecture (Ports and Adapters)**, 
 
 ---
 
-## 🧪 Automated Test Suite (25 Tests Passing)
+## 🧪 Automated Test Suite (26 Tests Passing with Testcontainers)
 
 All tests are executed via strict automated pipelines (`-warnaserror`):
 
@@ -64,8 +64,8 @@ powershell -ExecutionPolicy Bypass -File scripts/validate-all.ps1
 | :--- | :--- | :--- | :---: |
 | **Unit Tests** | `App.UnitTests` (xUnit, FluentAssertions, NSubstitute) | Value objects, domain invariants, use case handlers | ✅ **17 Passed** |
 | **Architecture Tests** | `App.ArchTests` (NetArchTest.Rules) | Hexagonal isolation (Domain has 0 external references) | ✅ **3 Passed** |
-| **Integration Tests** | `App.IntegrationTests` (WebApplicationFactory) | End-to-end REST endpoints, live public rates, BOLA/IDOR | ✅ **5 Passed** |
-| **Total** | | | ✅ **25 Passed (0 Failures, 0 Warnings)** |
+| **Integration Tests** | `App.IntegrationTests` (WebApplicationFactory + Testcontainers) | End-to-end REST endpoints, PostgreSQL 17, RabbitMQ 4, live rates, BOLA/IDOR | ✅ **6 Passed** |
+| **Total** | | | ✅ **26 Passed (0 Failures, 0 Warnings)** |
 
 ---
 
