@@ -23,25 +23,42 @@ builder.Services.AddHealthChecks();
 var otelResource = ResourceBuilder.CreateDefault()
     .AddService(serviceName: MarketPulseDiagnostics.ServiceName, serviceVersion: MarketPulseDiagnostics.ServiceVersion);
 
-Action<OtlpExporterOptions> configureOtlp = opt =>
+Action<OtlpExporterOptions, string> configureOtlp = (opt, signalPath) =>
 {
-    var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
-    if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-    {
-        opt.Endpoint = new Uri(otlpEndpoint);
-    }
+    var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+        ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+    var protocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"]
+        ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL");
+    var headers = builder.Configuration["OTEL_EXPORTER_OTLP_HEADERS"]
+        ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS");
 
-    var protocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"];
-    if (string.Equals(protocol, "http/protobuf", StringComparison.OrdinalIgnoreCase))
+    var isHttpProtobuf = string.Equals(protocol, "http/protobuf", StringComparison.OrdinalIgnoreCase);
+
+    if (isHttpProtobuf)
     {
         opt.Protocol = OtlpExportProtocol.HttpProtobuf;
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            var trimmed = otlpEndpoint.TrimEnd('/');
+            if (!trimmed.EndsWith(signalPath, StringComparison.OrdinalIgnoreCase))
+            {
+                opt.Endpoint = new Uri($"{trimmed}/{signalPath}");
+            }
+            else
+            {
+                opt.Endpoint = new Uri(trimmed);
+            }
+        }
     }
-    else if (string.Equals(protocol, "grpc", StringComparison.OrdinalIgnoreCase))
+    else
     {
         opt.Protocol = OtlpExportProtocol.Grpc;
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            opt.Endpoint = new Uri(otlpEndpoint);
+        }
     }
 
-    var headers = builder.Configuration["OTEL_EXPORTER_OTLP_HEADERS"];
     if (!string.IsNullOrWhiteSpace(headers))
     {
         opt.Headers = headers;
@@ -53,6 +70,9 @@ builder.Services.Configure<OpenTelemetryLoggerOptions>(options =>
     options.IncludeFormattedMessage = true;
     options.IncludeScopes = true;
 });
+
+var hasOtlpEndpoint = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT"));
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
@@ -69,10 +89,9 @@ builder.Services.AddOpenTelemetry()
                 options.RecordException = true;
             });
 
-        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        if (hasOtlpEndpoint)
         {
-            tracing.AddOtlpExporter(configureOtlp);
+            tracing.AddOtlpExporter(opt => configureOtlp(opt, "v1/traces"));
         }
         else if (builder.Environment.IsDevelopment())
         {
@@ -85,10 +104,13 @@ builder.Services.AddOpenTelemetry()
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation();
 
-        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        if (hasOtlpEndpoint)
         {
-            metrics.AddOtlpExporter(configureOtlp);
+            metrics.AddOtlpExporter((opt, metricReaderOpt) =>
+            {
+                configureOtlp(opt, "v1/metrics");
+                metricReaderOpt.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 5000;
+            });
         }
         else if (builder.Environment.IsDevelopment())
         {
@@ -97,10 +119,9 @@ builder.Services.AddOpenTelemetry()
     })
     .WithLogging(logging =>
     {
-        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        if (hasOtlpEndpoint)
         {
-            logging.AddOtlpExporter(configureOtlp);
+            logging.AddOtlpExporter(opt => configureOtlp(opt, "v1/logs"));
         }
     });
 
