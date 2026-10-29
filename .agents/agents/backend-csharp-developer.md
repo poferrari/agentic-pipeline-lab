@@ -33,3 +33,6 @@ Você implementa rigorosamente o que foi especificado na Spec e nas Tasks sem in
    - Escreva testes de integração da API (`WebApplicationFactory` + `Testcontainers` ou banco de teste isolado) validando os status codes `200/201`, `400 ProblemDetails`, `401/403` (proteção BOLA/IDOR) e persistência real.
    - Sempre execute `dotnet build` e `dotnet test` antes de concluir sua tarefa.
 
+4. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - Todo código C#, namespaces, classes, métodos, records, enums, propriedades, variáveis, comentários, docstrings, logs estruturados e nomes de testes (`Given_When_Then`) DEVEM ser estritamente em inglês (EN-US). Nunca use português dentro do código-fonte ou dos testes.
+

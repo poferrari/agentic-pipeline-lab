@@ -46,5 +46,6 @@ Nenhuma Task, Feature ou Pull Request é considerada **Pronta (Done)** sem que *
 ## 5. CI/CD e Documentação do Pull Request
 - [ ] **Pipeline GitHub Actions Verde**: Todos os jobs de build, lint, testes, análise estática (CodeQL / Dependency Review / Trivy) estão configurados e passando.
 - [ ] **Migrations Seguras**: Se houve alteração de banco, a migration do EF Core foi gerada, revisada e testada (up e down).
+- [ ] **Padrão de Idioma Técnico (EN-US)**: Todo o código-fonte, nomes de classes/métodos, comentários, logs estruturados, nomes de testes, commits semânticos e descrição do Pull Request estão 100% em inglês (EN-US).
 - [ ] **Relatório de Pull Request Completo**: O PR contém a descrição detalhada gerada pela skill `pr-delivery-automation` (O que foi feito, Decisões Arquiteturais, Output real dos testes executados, Checklist OWASP e Instruções de Deploy/Rollback).
 

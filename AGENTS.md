@@ -10,7 +10,7 @@ Qualquer estrutura de projeto ou contexto fornecido nesta pasta deve ser process
 1. **KISS (Keep It Simple, Stupid) & YAGNI (You Aren't Gonna Need It)**:
    - Construa apenas o que é necessário para resolver o problema atual com excelência. Proibido over-engineering, abstrações prematuras ou camadas inúteis.
 2. **Clean Code & Legibilidade**:
-   - Código é lido muito mais vezes do que escrito. Nomes de variáveis, métodos e classes devem revelar intenção clara em inglês técnico (ou no idioma ubíquo do domínio acordado na Spec).
+   - Código é lido muito mais vezes do que escrito. Nomes de variáveis, métodos e classes devem revelar intenção clara em inglês técnico estrito (EN-US).
    - Métodos curtos (idealmente < 20 linhas), responsabilidade única (SRP/SOLID), early-returns (Guard Clauses) ao invés de `if/else` aninhados.
 3. **Zero Ambiguidade & Proatividade**:
    - **NUNCA** codifique sobre premissas não validadas ou requisitos ambíguos.
@@ -21,6 +21,16 @@ Qualquer estrutura de projeto ou contexto fornecido nesta pasta deve ser process
      - **Banco de Dados**: **PostgreSQL** (via Supabase ou Neon/Docker local) com Row-Level Security (RLS) ou isolamento estrito na aplicação.
      - **Mensageria**: **RabbitMQ** (CloudAMQP no free tier ou container local).
      - **Cache**: `HybridCache` (.NET 9+) combinando `IMemoryCache` (L1 gratuito) e Redis/Upstash ou Postgres (L2 opcional quando necessário).
+5. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - **TODO e qualquer artefato gerado ou mantido no repositório DEVE ser estritamente em INGLÊS (EN-US)**:
+     - Código-fonte (nomes de projetos, namespaces, classes, métodos, records, enums, propriedades, variáveis).
+     - Comentários de código e docstrings.
+     - Mensagens de log estruturado e traces OpenTelemetry.
+     - Testes automatizados (nomes de classes de teste, métodos de teste `Given_When_Then`, asserções e fixtures).
+     - Documentação técnica (`docs/specs/`, `docs/architecture/`, ADRs, checklists de DoR/DoD e Tasks).
+     - Mensagens de commit Git (formato Conventional Commits em EN-US).
+     - Títulos e descrições de Pull Requests e Issues no GitHub.
+   - *Nota de Comunicação*: A interação conversacional no chat direto com o usuário é mantida no idioma de preferência do usuário (Português), mas absolutamente **nenhum texto em português deve constar no código-fonte, testes, documentação do repositório, commits ou PRs**.
 
 ---
 

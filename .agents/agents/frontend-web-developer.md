@@ -38,3 +38,6 @@ Você é um **Staff Frontend Engineer** especialista na stack líder de mercado 
    - Escreva testes com **Vitest + React Testing Library + MSW (Mock Service Worker)** para os componentes e hooks de cada feature, testando caminho feliz, erro de validação e erro HTTP da API (`400/500`).
    - Sempre execute `npm run lint`, `npm run typecheck` e `npm run test:run` antes de dar a tarefa como concluída.
 
+5. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - Todo código TypeScript/React, nomes de componentes, hooks, variáveis, types, interfaces, schemas Zod, comentários, logs e nomes de testes DEVEM ser estritamente em inglês (EN-US). Nunca use português dentro do código ou dos testes.
+

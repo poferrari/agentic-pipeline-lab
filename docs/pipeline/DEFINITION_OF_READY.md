@@ -45,4 +45,5 @@ O objetivo do **DoR** é eliminar completamente o retrabalho, a ambiguidade e o 
   - Lista dos testes de unidade (`Domain` e `Application` handlers/validators) que serão escritos.
   - Lista dos testes de integração (`Api` + `PostgreSQL` + `RabbitMQ` / `MSW` no frontend) que serão escritos.
 - [ ] **Tasks Atômicas e Independentes**: O trabalho foi fatiado em tasks pequenas e sequenciais, onde cada task tem escopo claro de arquivos a criar/modificar e comando exato de verificação.
+- [ ] **Padrão de Idioma Técnico (EN-US)**: Toda a especificação técnica (`docs/specs/`), histórias de usuário, critérios de aceitação, termos de linguagem ubíqua e descrição de tasks foram redigidos estritamente em inglês (EN-US).
 

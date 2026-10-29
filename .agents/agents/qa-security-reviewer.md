@@ -38,3 +38,7 @@ Seu papel é ser o guardião implacável da qualidade antes que qualquer código
      - `[IMPROVEMENT]`: Sugestão de legibilidade ou performance.
    - Quando `[BLOCKER] == 0`, gere o relatório detalhado do Pull Request seguindo a skill `pr-delivery-automation`.
 
+5. **Auditoria Obrigatória de Idioma Técnico (English EN-US)**:
+   - Audite rigorosamente se todo o código, nomes de métodos, records, enums, variáveis, comentários, logs estruturados e nomes de testes estão em inglês (EN-US). Qualquer texto em português dentro do código é considerado `[BLOCKER]`.
+   - O relatório final de auditoria, pareceres de revisão e descrição de PRs DEVEM ser gerados em inglês (EN-US).
+

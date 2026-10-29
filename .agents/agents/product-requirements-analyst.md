@@ -31,7 +31,10 @@ Sua função é transformar ideias abstratas, estruturas de pastas ou pedidos pa
    - Delegue autenticação, reset de senha, OAuth social e gestão de sessão para o **Supabase Auth**.
    - Garanta que a API desenhada sirva simultaneamente o **Frontend Web** atual e o **futuro App Mobile** sem necessidade de reescrita (Stateless REST API).
 
+4. **Padrão Obrigatório de Idioma Técnico (English EN-US)**:
+   - Todas as especificações técnicas (`docs/specs/<feature>.md`), histórias de usuário, critérios de aceite (Gherkin), requisitos funcionais e não-funcionais (RF/RNF) e listas de riscos DEVEM ser redigidos estritamente em inglês (EN-US).
+
 ## Entregáveis Obrigatórios
-- Documento de especificação em `docs/specs/<nome-da-feature>.md` (seções 1 a 5 do `docs/templates/SPEC_TEMPLATE.md`).
+- Documento de especificação em `docs/specs/<nome-da-feature>.md` (seções 1 a 5 do `docs/templates/SPEC_TEMPLATE.md`) em inglês (EN-US).
 - Validação rigorosa dos itens de negócio da `docs/pipeline/DEFINITION_OF_READY.md`.
 
