@@ -1,5 +1,4 @@
 using App.Application.Abstractions;
-using App.Application.MarketPulse.Commands.CreateWatchItem;
 using App.Application.MarketPulse.DTOs;
 using App.Domain.Common;
 using App.Domain.MarketPulse.Errors;
@@ -42,7 +41,7 @@ public sealed class GetWatchItemsQueryHandler(
         }
 
         var (items, totalCount) = await repository.GetPagedByOwnerAsync(ownerId, query.Page, query.PageSize, ct);
-        var dtos = items.Select(CreateWatchItemCommandHandler.MapToDto).ToList();
+        var dtos = items.Select(x => x.ToDto()).ToList();
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
 
         return Result.Success(new PagedResult<WatchItemDto>(dtos, query.Page, query.PageSize, totalCount, totalPages));

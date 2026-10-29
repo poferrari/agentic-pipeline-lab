@@ -44,11 +44,15 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
     public DateTimeOffset CreatedAtUtc { get; private init; }
     public DateTimeOffset? TriggeredAtUtc { get; private set; }
 
+    /// <summary>
+    /// Factory creating a CurrencyWatchItem from strongly-typed domain value objects.
+    /// Follows Object Calisthenics: wraps primitives and enforces domain invariants.
+    /// </summary>
     public static Result<CurrencyWatchItem> Create(
         Guid ownerId,
-        string? baseCurrencyRaw,
-        string? targetCurrencyRaw,
-        decimal targetRateRaw,
+        CurrencyCode baseCurrency,
+        CurrencyCode targetCurrency,
+        TargetRate targetRate,
         bool notifyWhenAbove,
         string? notes,
         DateTimeOffset? createdAtUtc = null)
@@ -58,27 +62,9 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
             return Result.Failure<CurrencyWatchItem>(MarketPulseErrors.InvalidOwner);
         }
 
-        var baseCurrencyResult = CurrencyCode.Create(baseCurrencyRaw);
-        if (baseCurrencyResult.IsFailure)
-        {
-            return Result.Failure<CurrencyWatchItem>(baseCurrencyResult.Error);
-        }
-
-        var targetCurrencyResult = CurrencyCode.Create(targetCurrencyRaw);
-        if (targetCurrencyResult.IsFailure)
-        {
-            return Result.Failure<CurrencyWatchItem>(targetCurrencyResult.Error);
-        }
-
-        if (baseCurrencyResult.Value == targetCurrencyResult.Value)
+        if (baseCurrency == targetCurrency)
         {
             return Result.Failure<CurrencyWatchItem>(MarketPulseErrors.SameCurrencyNotAllowed);
-        }
-
-        var targetRateResult = TargetRate.Create(targetRateRaw);
-        if (targetRateResult.IsFailure)
-        {
-            return Result.Failure<CurrencyWatchItem>(targetRateResult.Error);
         }
 
         var sanitizedNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
@@ -91,9 +77,9 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
         var item = new CurrencyWatchItem(
             Guid.CreateVersion7(),
             ownerId,
-            baseCurrencyResult.Value,
-            targetCurrencyResult.Value,
-            targetRateResult.Value,
+            baseCurrency,
+            targetCurrency,
+            targetRate,
             notifyWhenAbove,
             sanitizedNotes,
             timestamp);
@@ -109,6 +95,55 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
         return Result.Success(item);
     }
 
+    /// <summary>
+    /// Convenience factory accepting raw primitive types, validating and delegating to the strongly-typed overload.
+    /// </summary>
+    public static Result<CurrencyWatchItem> Create(
+        Guid ownerId,
+        string? baseCurrencyRaw,
+        string? targetCurrencyRaw,
+        decimal targetRateRaw,
+        bool notifyWhenAbove,
+        string? notes,
+        DateTimeOffset? createdAtUtc = null)
+    {
+        var baseResult = CurrencyCode.Create(baseCurrencyRaw);
+        if (baseResult.IsFailure)
+        {
+            return Result.Failure<CurrencyWatchItem>(baseResult.Error);
+        }
+
+        var targetResult = CurrencyCode.Create(targetCurrencyRaw);
+        if (targetResult.IsFailure)
+        {
+            return Result.Failure<CurrencyWatchItem>(targetResult.Error);
+        }
+
+        var rateResult = TargetRate.Create(targetRateRaw);
+        if (rateResult.IsFailure)
+        {
+            return Result.Failure<CurrencyWatchItem>(rateResult.Error);
+        }
+
+        return Create(
+            ownerId,
+            baseResult.Value,
+            targetResult.Value,
+            rateResult.Value,
+            notifyWhenAbove,
+            notes,
+            createdAtUtc);
+    }
+
+    /// <summary>
+    /// Pure domain predicate determining whether a given market rate satisfies the alert threshold.
+    /// Adheres to Tell, Don't Ask.
+    /// </summary>
+    public bool IsTargetRateMet(decimal marketRate) =>
+        NotifyWhenAbove
+            ? marketRate >= TargetRate.Value
+            : marketRate <= TargetRate.Value;
+
     public Result EvaluateMarketRate(decimal currentMarketRate, DateTimeOffset? evaluatedAtUtc = null)
     {
         if (currentMarketRate <= 0m)
@@ -118,11 +153,7 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
 
         LastKnownRate = decimal.Round(currentMarketRate, 6, MidpointRounding.AwayFromZero);
 
-        var thresholdMet = NotifyWhenAbove
-            ? LastKnownRate.Value >= TargetRate.Value
-            : LastKnownRate.Value <= TargetRate.Value;
-
-        if (thresholdMet && !IsTriggered)
+        if (IsTargetRateMet(LastKnownRate.Value) && !IsTriggered)
         {
             var timestamp = evaluatedAtUtc ?? DateTimeOffset.UtcNow;
             IsTriggered = true;

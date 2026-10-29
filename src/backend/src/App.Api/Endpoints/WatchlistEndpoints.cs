@@ -45,8 +45,8 @@ public sealed class WatchlistEndpoints : IEndpoint
             if (result.IsSuccess)
             {
                 MarketPulseDiagnostics.WatchlistCreatedCounter.Add(1,
-                    new KeyValuePair<string, object?>("currency.base", request.BaseCurrency.ToUpperInvariant()),
-                    new KeyValuePair<string, object?>("currency.target", request.TargetCurrency.ToUpperInvariant()));
+                    new KeyValuePair<string, object?>("currency.base", result.Value.BaseCurrency),
+                    new KeyValuePair<string, object?>("currency.target", result.Value.TargetCurrency));
 
                 return TypedResults.Created($"/api/v1/watchlist/{result.Value.Id}", result.Value);
             }

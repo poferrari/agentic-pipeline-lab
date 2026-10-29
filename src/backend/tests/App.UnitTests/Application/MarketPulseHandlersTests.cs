@@ -99,6 +99,34 @@ public sealed class MarketPulseHandlersTests
     }
 
     [Fact]
+    public async Task CreateWatchItemCommandHandler_WhenNotesExceedLimit_ShouldFailFastInValidation()
+    {
+        var repository = Substitute.For<ICurrencyWatchItemRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var exchangeProvider = Substitute.For<IMarketExchangeProvider>();
+        var currentUserProvider = Substitute.For<ICurrentUserProvider>();
+        var eventBus = Substitute.For<IEventBusPublisher>();
+        var validator = new CreateWatchItemCommandValidator();
+
+        currentUserProvider.GetCurrentUserId().Returns(AuthenticatedUserId);
+
+        var handler = new CreateWatchItemCommandHandler(
+            repository,
+            unitOfWork,
+            exchangeProvider,
+            currentUserProvider,
+            eventBus,
+            validator);
+
+        var tooLongNotes = new string('x', CurrencyWatchItem.MaxNotesLength + 10);
+        var result = await handler.HandleAsync(new CreateWatchItemCommand("USD", "BRL", 5.50m, Notes: tooLongNotes), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("WatchItem.ValidationFailed");
+        result.Error.Description.Should().Contain("Notes must not exceed 250 characters");
+    }
+
+    [Fact]
     public async Task GetExchangeRatesQueryHandler_WhenCurrencyIsValid_ShouldReturnQuoteFromProvider()
     {
         var exchangeProvider = Substitute.For<IMarketExchangeProvider>();
@@ -120,5 +148,40 @@ public sealed class MarketPulseHandlersTests
         result.IsSuccess.Should().BeTrue();
         result.Value.BaseCurrency.Should().Be("EUR");
         result.Value.Rates.Should().ContainKey("USD").WhoseValue.Should().Be(1.08m);
+    }
+
+    [Fact]
+    public async Task GetExchangeRatesQueryHandler_WhenSymbolsContainDuplicates_ShouldDeduplicateBeforeCallingProvider()
+    {
+        var exchangeProvider = Substitute.For<IMarketExchangeProvider>();
+        var validator = new GetExchangeRatesQueryValidator();
+
+        IReadOnlyCollection<string>? capturedSymbols = null;
+        exchangeProvider.GetLatestRatesAsync("EUR", Arg.Do<IReadOnlyCollection<string>?>(s => capturedSymbols = s), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new ExchangeRatesQuoteDto("EUR", "2026-10-28", "ECB", new Dictionary<string, decimal>(), DateTimeOffset.UtcNow)));
+
+        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator);
+        var result = await handler.HandleAsync(new GetExchangeRatesQuery("EUR", "USD,usd, BRL ,brl"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        capturedSymbols.Should().NotBeNull();
+        capturedSymbols!.Should().HaveCount(2).And.Contain(["USD", "BRL"]);
+    }
+
+    [Fact]
+    public async Task GetExchangeRatesQueryHandler_WhenAllSymbolsMatchBaseCurrency_ShouldReturnSelfQuoteWithoutExternalCall()
+    {
+        var exchangeProvider = Substitute.For<IMarketExchangeProvider>();
+        var validator = new GetExchangeRatesQueryValidator();
+
+        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator);
+        var result = await handler.HandleAsync(new GetExchangeRatesQuery("USD", "usd,USD"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BaseCurrency.Should().Be("USD");
+        result.Value.Rates.Should().ContainKey("USD").WhoseValue.Should().Be(1.0m);
+        result.Value.Provider.Should().Be("Internal-SameCurrency");
+
+        await exchangeProvider.DidNotReceiveWithAnyArgs().GetLatestRatesAsync(default!, default!, default);
     }
 }

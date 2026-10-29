@@ -196,6 +196,9 @@ public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger)
         }
         catch (Exception ex)
         {
+            // Crucial resilience fix: Remove event from tracking so retry attempts are not treated as duplicate skips
+            ProcessedEvents.TryRemove(eventId, out _);
+
             stopwatch.Stop();
             MarketPulseDiagnostics.MessagingConsumedCounter.Add(1,
                 new KeyValuePair<string, object?>("event_type", "CurrencyAlertNotificationEvent"),
