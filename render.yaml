@@ -23,3 +23,11 @@ services:
         value: "true"
       - key: Supabase__Url
         value: https://jrhpbdftohjeymzwkbee.supabase.co
+      - key: OTEL_SERVICE_NAME
+        value: agentic-pipeline-lab-api
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: https://otlp-gateway-prod-sa-east-1.grafana.net/otlp
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
