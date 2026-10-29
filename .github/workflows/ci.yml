@@ -20,9 +20,10 @@ concurrency:
 jobs:
   # ============================================================================
   # 1. BACKEND (.NET 9 C# Minimal API + Hexagonal + DDD + SonarCloud + Coverage)
+  # Exact name must match branch protection required status checks!
   # ============================================================================
   backend-quality-and-tests:
-    name: "Backend (.NET 9 C#): Lint, SonarCloud, Strict Build & Test Suites"
+    name: "Backend (.NET 9 C#): Lint, Strict Build & Test Suites"
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -65,8 +66,8 @@ jobs:
             /o:"poferrari" \
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml" \
-            /d:sonar.cs.vstest.reportsPaths="**/TestResults/**/*.trx" \
+            /d:sonar.cs.opencover.reportsPaths="${{ github.workspace }}/src/backend/TestResults/**/coverage.opencover.xml" \
+            /d:sonar.cs.vstest.reportsPaths="${{ github.workspace }}/src/backend/TestResults/**/*.trx" \
             /d:sonar.coverage.exclusions="**/tests/**,**/Program.cs,**/AppDbContext.cs"
 
       - name: Build Solution (Zero Warnings Allowed = -warnaserror)
@@ -99,9 +100,10 @@ jobs:
 
       - name: Generate Code Coverage Markdown Report
         if: always()
+        continue-on-error: true
         run: |
           reportgenerator \
-            -reports:"**/TestResults/**/coverage.opencover.xml" \
+            -reports:"./TestResults/**/coverage.opencover.xml" \
             -targetdir:"./CoverageReport" \
             -reporttypes:"MarkdownSummaryGithub;Badges"
           if [ -f "./CoverageReport/SummaryGithub.md" ]; then
