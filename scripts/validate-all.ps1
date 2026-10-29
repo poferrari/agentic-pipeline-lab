@@ -1,25 +1,25 @@
-# Quality Gate Unificado da Esteira Agentica (validate-all.ps1)
-# Executa Lint, Compilacao Estrita (-warnaserror), Auditoria de Seguranca e Testes Automatizados
+# Unified Quality Gate for Agentic Pipeline (validate-all.ps1)
+# Executes Linting, Strict Compilation (-warnaserror), Security Audit, and Automated Tests
 
 $ErrorActionPreference = "Stop"
 
 Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host " [QUALITY GATE] INICIANDO VALIDACAO DA ESTEIRA AGENTICA" -ForegroundColor Cyan
+Write-Host " [QUALITY GATE] STARTING AGENTIC PIPELINE VALIDATION" -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 
-# 1. Verificacao de Segredos Expostos no Git
-Write-Host "`n[1/4] Verificando higiene de seguranca e arquivos sensiveis..." -ForegroundColor Yellow
+# 1. Verification of Secrets in Git
+Write-Host "`n[1/4] Verifying security hygiene and sensitive tracked files..." -ForegroundColor Yellow
 if (Test-Path ".git") {
     $trackedEnv = git ls-files ".env" "appsettings.Local.json"
     if ($trackedEnv) {
-        Write-Error "BLOQUEIO OWASP: Arquivo de variaveis sensiveis ($trackedEnv) esta rastreado pelo Git!"
+        Write-Error "OWASP BLOCKER: Sensitive configuration file ($trackedEnv) is tracked by Git!"
         exit 1
     }
 }
-Write-Host "[OK] Nenhum arquivo .env sensivel rastreado." -ForegroundColor Green
+Write-Host "[OK] No sensitive .env or local configuration files tracked." -ForegroundColor Green
 
-# 2. Validacao do Backend (.NET C# Minimal API + Hexagonal + DDD)
-Write-Host "`n[2/4] Validando Backend C# (.NET)..." -ForegroundColor Yellow
+# 2. Backend Validation (.NET C# Minimal API + Hexagonal + DDD)
+Write-Host "`n[2/4] Validating Backend C# (.NET)..." -ForegroundColor Yellow
 $backendCandidates = @("src/backend")
 if (Test-Path "sandbox") {
     $sandboxBackends = Get-ChildItem -Path "sandbox" -Directory | ForEach-Object { Join-Path $_.FullName "src/backend" } | Where-Object { Test-Path $_ }
@@ -32,26 +32,26 @@ foreach ($backendDir in $backendCandidates) {
         $slnFiles = @(Get-ChildItem -Path $backendDir -Include "*.sln", "*.slnx", "*.csproj" -Recurse -Depth 2 -ErrorAction SilentlyContinue)
         if ($slnFiles.Count -gt 0) {
             $validatedAnyBackend = $true
-            Write-Host " -> Validando solucao em: $backendDir" -ForegroundColor Cyan
+            Write-Host " -> Validating solution in: $backendDir" -ForegroundColor Cyan
             Push-Location $backendDir
             try {
-                Write-Host " -> Executando dotnet restore..."
+                Write-Host " -> Running dotnet restore..."
                 dotnet restore
-                if ($LASTEXITCODE -ne 0) { throw "Falha no dotnet restore ($backendDir)" }
+                if ($LASTEXITCODE -ne 0) { throw "Failed dotnet restore ($backendDir)" }
 
-                Write-Host " -> Verificando formatacao e estilo (dotnet format)..."
+                Write-Host " -> Verifying code formatting and style (dotnet format)..."
                 dotnet format --verify-no-changes --no-restore
-                if ($LASTEXITCODE -ne 0) { throw "Falha no dotnet format ($backendDir)." }
+                if ($LASTEXITCODE -ne 0) { throw "Failed dotnet format ($backendDir)." }
 
-                Write-Host " -> Compilando em modo estrito (Zero Warnings = -warnaserror)..."
+                Write-Host " -> Compiling in strict mode (Zero Warnings = -warnaserror)..."
                 dotnet build --configuration Release --no-restore -warnaserror
-                if ($LASTEXITCODE -ne 0) { throw "Falha na compilacao estrita do Backend ($backendDir)." }
+                if ($LASTEXITCODE -ne 0) { throw "Failed strict backend build ($backendDir)." }
 
-                Write-Host " -> Executando Testes Automatizados (Unidade, Arquitetura e Integracao)..."
+                Write-Host " -> Running Automated Tests (Unit, Architecture, and Integration)..."
                 dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
-                if ($LASTEXITCODE -ne 0) { throw "Falha nos testes automatizados do Backend ($backendDir)." }
+                if ($LASTEXITCODE -ne 0) { throw "Failed automated backend tests ($backendDir)." }
 
-                Write-Host "[OK] Backend C# ($backendDir) aprovado com 0 erros e 0 warnings!" -ForegroundColor Green
+                Write-Host "[OK] Backend C# ($backendDir) approved with 0 errors and 0 warnings!" -ForegroundColor Green
             } finally {
                 Pop-Location
             }
@@ -60,36 +60,36 @@ foreach ($backendDir in $backendCandidates) {
 }
 
 if (-not $validatedAnyBackend) {
-    Write-Host "[INFO] Nenhuma solucao backend inicializada em src/backend ou sandbox/*/src/backend." -ForegroundColor DarkGray
+    Write-Host "[INFO] No backend solution found in src/backend or sandbox/*/src/backend." -ForegroundColor DarkGray
 }
 
-# 3. Validacao do Frontend (React / Next.js + TypeScript + TanStack Query + Vitest)
-Write-Host "`n[3/4] Validando Frontend (TypeScript / React)..." -ForegroundColor Yellow
+# 3. Frontend Validation (React / Next.js + TypeScript + TanStack Query + Vitest)
+Write-Host "`n[3/4] Validating Frontend (TypeScript / React)..." -ForegroundColor Yellow
 if (Test-Path "src/frontend/package.json") {
     Push-Location "src/frontend"
     try {
-        Write-Host " -> Executando Linter (npm run lint)..."
+        Write-Host " -> Running Linter (npm run lint)..."
         npm run lint
-        if ($LASTEXITCODE -ne 0) { throw "Falha no ESLint do Frontend." }
+        if ($LASTEXITCODE -ne 0) { throw "Failed Frontend ESLint." }
 
-        Write-Host " -> Executando Typecheck estrito (npm run typecheck)..."
+        Write-Host " -> Running strict Typecheck (npm run typecheck)..."
         npm run typecheck
-        if ($LASTEXITCODE -ne 0) { throw "Falha na checagem de tipos TypeScript." }
+        if ($LASTEXITCODE -ne 0) { throw "Failed TypeScript type checking." }
 
-        Write-Host " -> Executando Testes Automatizados (npm run test:run)..."
+        Write-Host " -> Running Automated Tests (npm run test:run)..."
         npm run test:run
-        if ($LASTEXITCODE -ne 0) { throw "Falha nos testes Vitest/MSW do Frontend." }
+        if ($LASTEXITCODE -ne 0) { throw "Failed Frontend Vitest/MSW tests." }
 
-        Write-Host "[OK] Frontend aprovado com 0 erros!" -ForegroundColor Green
+        Write-Host "[OK] Frontend approved with 0 errors!" -ForegroundColor Green
     } finally {
         Pop-Location
     }
 } else {
-    Write-Host "[INFO] Frontend (src/frontend/package.json) ainda nao inicializado." -ForegroundColor DarkGray
+    Write-Host "[INFO] Frontend (src/frontend/package.json) not yet initialized." -ForegroundColor DarkGray
 }
 
-# 4. Verificacao da Estrutura Documental da Esteira
-Write-Host "`n[4/4] Verificando integridade dos Quality Gates (DoR / DoD / AGENTS.md)..." -ForegroundColor Yellow
+# 4. Pipeline Governance Documentation Integrity
+Write-Host "`n[4/4] Verifying Quality Gates governance integrity (DoR / DoD / AGENTS.md)..." -ForegroundColor Yellow
 $requiredFiles = @(
     "AGENTS.md",
     "docs/pipeline/DEFINITION_OF_READY.md",
@@ -101,12 +101,12 @@ $requiredFiles = @(
 )
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path $file)) {
-        Write-Error "Arquivo obrigatorio da esteira ausente: $file"
+        Write-Error "Required pipeline governance file missing: $file"
         exit 1
     }
 }
-Write-Host "[OK] Todos os artefatos de governanca da esteira estao presentes e integros!" -ForegroundColor Green
+Write-Host "[OK] All pipeline governance artifacts are present and intact!" -ForegroundColor Green
 
 Write-Host "`n=================================================================" -ForegroundColor Green
-Write-Host " [SUCESSO] QUALITY GATE CONCLUIDO COM 100% DE APROVACAO!" -ForegroundColor Green
+Write-Host " [SUCCESS] QUALITY GATE COMPLETED WITH 100% APPROVAL!" -ForegroundColor Green
 Write-Host "=================================================================" -ForegroundColor Green

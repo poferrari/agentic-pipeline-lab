@@ -1,29 +1,29 @@
 ---
 name: csharp-hexagonal-ddd
 description: >-
-  Use esta skill sempre que for arquitetar, criar ou modificar código Backend em C# (.NET 8/9+).
-  Fornece a estrutura exata e padrões de código mínimo (KISS / Clean Code) para Minimal APIs,
-  Arquitetura Hexagonal (Ports & Adapters), Domain-Driven Design (DDD), Result Pattern,
+  Use this skill whenever architecting, creating, or modifying Backend C# code (.NET 8/9+).
+  Provides the exact structure, clean code patterns (KISS / Clean Code) for Minimal APIs,
+  Hexagonal Architecture (Ports & Adapters), Domain-Driven Design (DDD), Result Pattern,
   FluentValidation, PostgreSQL (EF Core), RabbitMQ (MassTransit Outbox), HybridCache,
-  autenticação Supabase JWT, guard rails do Microsoft .NET Team (dotnet/skills) e testes automatizados.
+  Supabase JWT authentication, Microsoft .NET Team guardrails (dotnet/skills), and automated testing.
 ---
 
-# Padrões Backend C# (.NET 9+ Minimal API + Arquitetura Hexagonal + DDD + RabbitMQ)
+# Backend C# Standards (.NET 9+ Minimal API + Hexagonal Architecture + DDD + RabbitMQ)
 
-Siga rigorosamente estes padrões e guard rails oficiais alinhados às diretrizes do time do **.NET da Microsoft (`dotnet/skills`)**, **LazySkills C# standards** e **Clean Code**.
+Follow these rigorous standards and official guardrails aligned with **Microsoft .NET Team (`dotnet/skills`)**, **LazySkills C# standards**, and **Clean Code**.
 
 ---
 
-## 1. Estrutura de Solução e Dependências Estritas
+## 1. Solution Structure and Strict Dependencies
 
 ```text
 src/backend/
 ├── Directory.Build.props      # <Nullable>enable</Nullable>, <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 ├── src/
-│   ├── App.Domain/           # Sem dependências externas! Apenas C# puro.
-│   ├── App.Application/      # Referencia apenas: App.Domain + FluentValidation
-│   ├── App.Infrastructure/   # Referencia: App.Domain, App.Application + EF Core Npgsql, MassTransit, HybridCache, JwtBearer
-│   └── App.Api/              # Referencia: App.Application, App.Infrastructure (apenas para DI)
+│   ├── App.Domain/           # Zero external dependencies! Pure C# only.
+│   ├── App.Application/      # References only: App.Domain + FluentValidation
+│   ├── App.Infrastructure/   # References: App.Domain, App.Application + EF Core Npgsql, MassTransit, HybridCache, JwtBearer
+│   └── App.Api/              # References: App.Application, App.Infrastructure (solely for DI composition)
 └── tests/
     ├── App.UnitTests/        # xUnit, FluentAssertions, NSubstitute
     ├── App.ArchTests/        # NetArchTest.Rules
@@ -32,13 +32,13 @@ src/backend/
 
 ---
 
-## 2. Guard Rails Estritos de Linguagem C# 12/13 (.NET 9)
+## 2. Strict C# 12/13 (.NET 9) Language Guardrails
 
-### 2.1. Regras para DTOs e Contratos de API
-- **`public sealed record` obrigatório**: DTOs de Request e Response devem ser `sealed record` com propriedades posicionais ou `{ get; init; }`. Garante imutabilidade, comparação por valor e otimização JIT.
-- **Nomenclatura Padrão**: `Create{Entity}Request`, `Update{Entity}Request`, `{Entity}Response`, `{Entity}ListResponse`.
-- **`DateTimeOffset` Exclusivo**: Jamais use `DateTime` cru em contratos de API ou eventos. Use sempre `DateTimeOffset` para precisão UTC e conformidade ISO 8601.
-- **Docstrings XML**: Todos os DTOs devem conter `<summary>` nos seus parâmetros para enriquecer automaticamente a documentação OpenAPI gerada.
+### 2.1. Rules for DTOs and API Contracts
+- **Mandatory `public sealed record`**: Request and Response DTOs must be `sealed record` with positional properties or `{ get; init; }`. Guarantees immutability, value equality, and JIT devirtualization.
+- **Standard Naming**: `Create{Entity}Request`, `Update{Entity}Request`, `{Entity}Response`, `{Entity}ListResponse`.
+- **Exclusive `DateTimeOffset`**: Never use naive `DateTime` in API contracts or domain events. Always use `DateTimeOffset` for UTC precision and ISO 8601 compliance.
+- **XML Docstrings**: All DTOs must contain `<summary>` tags on their parameters to automatically enrich generated OpenAPI documentation.
 
 ```csharp
 namespace App.Application.MarketPulse.DTOs;
@@ -57,30 +57,30 @@ public sealed record CreateWatchItemRequest(
     string? Notes);
 ```
 
-### 2.2. Sintaxe Idiomática C# 12/13
-- **Collection Expressions**: Use `[...]` para coleções, listas vazias ou literais:
+### 2.2. Modern Idiomatic C# 12/13 Syntax
+- **Collection Expressions**: Use `[...]` for collections, empty lists, or literals:
   ```csharp
   List<string> symbols = [];
   ReadOnlySpan<byte> buffer = [0x01, 0x02, 0x03];
   ```
-- **Primary Constructors**: Adote construtores primários concisos em services, controllers e records:
+- **Primary Constructors**: Adopt concise primary constructors in services and records:
   ```csharp
   public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger) : IConsumer<CurrencyAlertEvent>
   ```
-- **`System.Threading.Lock` (.NET 9)**: Substitua `lock(new object())` pelo novo tipo `System.Threading.Lock`:
+- **`System.Threading.Lock` (.NET 9)**: Replace `lock(new object())` with the dedicated `System.Threading.Lock` type:
   ```csharp
   private readonly System.Threading.Lock _syncLock = new();
   // ...
-  lock (_syncLock) { /* secao critica otimizada */ }
+  lock (_syncLock) { /* optimized critical section */ }
   ```
-- **Raw String Literals**: Use `"""` para JSON, SQL ou templates multilinhas sem caracteres de escape desnecessários.
+- **Raw String Literals**: Use `"""` for multi-line JSON, SQL, or templates without escape characters.
 
 ---
 
-## 3. Padrões de Domínio e Aplicação (Hexagonal & DDD)
+## 3. Domain and Application Patterns (Hexagonal & DDD)
 
-### 3.1. Result Pattern & Erros Sem Exceções (`App.Domain/Common/Result.cs`)
-Nunca lance exceções para validações ou regras esperadas de negócio. Retorne `Result<T>`:
+### 3.1. Result Pattern & Exception-Free Flow (`App.Domain/Common/Result.cs`)
+Never throw exceptions for validations or expected domain errors. Return `Result<T>`:
 
 ```csharp
 namespace App.Domain.Common;
@@ -124,15 +124,15 @@ public sealed class Result<TValue> : Result
 }
 ```
 
-### 3.2. Aggregate Roots e Invariantes Protegidas
-Entidades blindam seu estado interno com construtores privados e métodos factory estáticos:
+### 3.2. Protected Aggregate Roots & Invariants
+Entities protect internal state with private constructors and static factory methods:
 
 ```csharp
 namespace App.Domain.MarketPulse;
 
 public sealed class CurrencyWatchItem : AggregateRoot<Guid>
 {
-    private CurrencyWatchItem() { } // Para o EF Core
+    private CurrencyWatchItem() { } // Required for EF Core
 
     public string BaseCurrency { get; private set; } = null!;
     public string TargetCurrency { get; private set; } = null!;
@@ -170,20 +170,20 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
 
 ---
 
-## 4. Guard Rails de Dados e EF Core (`optimizing-ef-core-queries`)
+## 4. EF Core Query Guardrails (`optimizing-ef-core-queries`)
 
-1. **Leitura Pura com `.AsNoTracking()`**: Sempre use `.AsNoTracking()` em queries de leitura (queries CQRS).
-2. **Projeções Diretas**: Projete para DTOs via `.Select()` antes de materializar com `.ToListAsync(ct)`. Nunca carregue a entidade inteira se precisar de 3 colunas.
-3. **Sem Cartesian Explosion**: Quando houver mais de um `.Include()`, adicione `.AsSplitQuery()` para evitar junções cartesianas gigantescas no PostgreSQL.
-4. **Rastreabilidade**: Adicione `.TagWith("MarketPulse.GetActiveWatchlist")` nas queries para identificá-las no pg_stat_statements e APM.
-5. **Propagação de Cancelamento**: Passe sempre `CancellationToken ct` para métodos de banco (`ToListAsync(ct)`, `FirstOrDefaultAsync(ct)`, `SaveChangesAsync(ct)`).
+1. **Pure Read Queries with `.AsNoTracking()`**: Always apply `.AsNoTracking()` on read queries (CQRS queries).
+2. **Direct Projections**: Project directly to DTOs via `.Select()` prior to materialization with `.ToListAsync(ct)`. Never load full entities if only specific fields are needed.
+3. **No Cartesian Explosion**: When navigating multiple relationships, add `.AsSplitQuery()` to eliminate massive relational cartesian explosions in PostgreSQL.
+4. **SQL Traceability**: Add `.TagWith("MarketPulse.GetActiveWatchlist")` on critical queries for instant recognition in `pg_stat_statements` and APMs.
+5. **Cancellation Propagation**: Always pass `CancellationToken ct` to EF Core methods (`ToListAsync(ct)`, `FirstOrDefaultAsync(ct)`, `SaveChangesAsync(ct)`).
 
 ---
 
-## 5. ASP.NET Core Minimal APIs Limpas (.NET 9+)
+## 5. Clean ASP.NET Core Minimal APIs (.NET 9+)
 
-1. **Sem Swashbuckle**: Utilize OpenAPI nativo do .NET 9 (`builder.Services.AddOpenApi()` + `app.MapOpenApi()`).
-2. **`TypedResults` Estritos**: Mapeie endpoints usando tipos concretos para gerar schemas estáticos perfeitos sem necessidade de filtros reflexivos pesados:
+1. **No Swashbuckle**: Use native .NET 9 OpenAPI (`builder.Services.AddOpenApi()` + `app.MapOpenApi()`).
+2. **Strict `TypedResults`**: Map endpoints returning concrete types for clean static schema inference:
 
 ```csharp
 public sealed class WatchlistEndpoints : IEndpoint
@@ -226,22 +226,21 @@ public sealed class WatchlistEndpoints : IEndpoint
 
 ---
 
-## 6. Anti-Padrão: Proibição de Sync-Over-Async (`csharp-async`)
+## 6. Anti-Pattern: Prohibition of Sync-Over-Async (`csharp-async`)
 
-- **NUNCA** chame:
+- **NEVER** invoke:
   - `task.Result`
   - `task.GetAwaiter().GetResult()`
   - `task.Wait()`
-- **Sempre utilize `await` e retorne `Task` / `Task<T>`** (ou `ValueTask<T>` em caminhos com alto índice de conclusão síncrona).
-- Propague o parâmetro `CancellationToken ct` até o cliente HTTP, broker e banco de dados para evitar consumo inútil de recursos quando o cliente encerra a conexão.
+- **Always use `await` and return `Task` / `Task<T>`** (or `ValueTask<T>` on high-frequency synchronous execution paths).
+- Propagate `CancellationToken ct` down to HttpClient, database, and broker operations to immediately release resources when client connections terminate.
 
 ---
 
-## 7. Mensageria MassTransit e Transactional Outbox
+## 7. MassTransit Messaging and Transactional Outbox
 
-- **Nunca publique diretamente no RabbitMQ fora da transação**:
+- **Never publish directly to RabbitMQ outside database transactions**:
   ```csharp
-  // Registre o EntityFramework Outbox no MassTransit
   services.AddMassTransit(x =>
   {
       x.AddEntityFrameworkOutbox<AppDbContext>(o =>
@@ -258,13 +257,13 @@ public sealed class WatchlistEndpoints : IEndpoint
       });
   });
   ```
-- **Consumidores Idempotentes**: Mensagens podem ser reentregues em redes instáveis. Armazene o `EventId` ou utilize o Inbox do MassTransit para garantir execução exatamente uma vez.
+- **Idempotent Consumers**: Messages may be redelivered during transient failures. Track `EventId` or use MassTransit's Inbox to guarantee exactly-once business processing.
 
 ---
 
-## 8. Bateria de Testes Automatizados (xUnit + Testcontainers)
+## 8. Automated Test Battery (xUnit + Testcontainers)
 
-1. **Arquitetura (`App.ArchTests`)**:
+1. **Architecture Tests (`App.ArchTests`)**:
    ```csharp
    [Fact]
    public void Domain_Should_Not_Have_Dependency_On_Other_Projects()
@@ -277,6 +276,6 @@ public sealed class WatchlistEndpoints : IEndpoint
        result.IsSuccessful.Should().BeTrue();
    }
    ```
-2. **Integração Real (`App.IntegrationTests`)**:
-   - Utilize containers Docker gerenciados via `Testcontainers.PostgreSql` e `Testcontainers.RabbitMq`.
-   - Inicialize containers em fixtures compartilhadas (`IAsyncLifetime`) para evitar overhead de restart por teste.
+2. **Real Integration Tests (`App.IntegrationTests`)**:
+   - Utilize Docker containers managed via `Testcontainers.PostgreSql` and `Testcontainers.RabbitMq`.
+   - Initialize containers in shared fixtures (`IAsyncLifetime`) to eliminate per-test restart overhead.

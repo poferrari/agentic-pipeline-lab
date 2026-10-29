@@ -1,89 +1,89 @@
-# Especificação Técnica e Funcional (Spec): `[NOME_DA_FEATURE_OU_PROJETO]`
+# Technical and Functional Specification (Spec): `[FEATURE_OR_PROJECT_NAME]`
 
-> **Status**: `[DRAFT | IN_REVIEW | READY_FOR_DEV | IMPLEMENTED]`
-> **Data**: `YYYY-MM-DD`
-> **Autor(es)**: `product-requirements-analyst` & `domain-architect-planner`
-
----
-
-## 1. Contexto, Problema e Objetivo de Negócio (MVP)
-- **Problema**: Qual dor real estamos resolvendo?
-- **Objetivo do MVP**: Qual é a entrega mínima de alto valor e baixo custo que valida esta funcionalidade?
-- **Fora de Escopo (Non-Goals / YAGNI)**: O que decidimos explicitamente **NÃO** construir agora para manter a simplicidade (KISS)?
+> **Status**: `[DRAFT | IN_REVIEW | READY_FOR_DEV | IMPLEMENTED]`  
+> **Date**: `YYYY-MM-DD`  
+> **Authors**: `product-requirements-analyst` & `domain-architect-planner`  
 
 ---
 
-## 2. Open Questions, Premissas e Decisões
-> **Regra**: Nenhuma task pode iniciar desenvolvimento se houver `[OPEN QUESTION]` bloqueante sem resposta.
+## 1. Context, Problem Statement, and Business Objective (MVP)
+- **Problem**: What real customer pain are we solving?
+- **MVP Objective**: What is the minimal, high-value, low-cost delivery that validates this capability?
+- **Out of Scope (Non-Goals / YAGNI)**: What did we explicitly decide **NOT** to build right now to maintain simplicity (KISS)?
 
-| ID | Pergunta / Ponto de Atenção | Status (`OPEN` / `RESOLVED`) | Decisão / Resposta Acordada |
+---
+
+## 2. Open Questions, Assumptions, and Decisions
+> **Rule**: No task may begin development if a blocking `[OPEN QUESTION]` remains unanswered.
+
+| ID | Topic / Question | Status (`OPEN` / `RESOLVED`) | Agreed Decision / Solution |
 | :--- | :--- | :--- | :--- |
-| `OQ-01` | Ex: Qual o limite máximo de tentativas antes de bloquear? | `RESOLVED` | Definido em 5 tentativas em 15 minutos via Rate Limiter. |
+| `OQ-01` | e.g. What is the retry limit before throttling? | `RESOLVED` | Capped at 5 attempts per 15 minutes via Rate Limiter. |
 
 ---
 
-## 3. Requisitos Funcionais (RF) e Critérios de Aceite (BDD)
+## 3. Functional Requirements (FR) and Acceptance Criteria (BDD)
 
-### `RF-001`: [Título Conciso do Requisito]
-- **Descrição**: O sistema deve...
-- **Atores / Permissões (Supabase Auth)**: `[Anônimo | Usuário Autenticado | Admin]`
-- **Critérios de Aceite (Gherkin)**:
-  - **Cenário 1 ( Caminho Feliz )**:
-    - **Dado** que...
-    - **Quando**...
-    - **Então**...
-  - **Cenário 2 ( Regra de Negócio / Falha Esperada )**:
-    - **Dado** que...
-    - **Quando**...
-    - **Então** deve retornar status `400/422` com código de erro `Dominio.RegraViolada`.
-
----
-
-## 4. Requisitos Não Funcionais (RNF) e Restrições
-- **Performance & Latência**: `p95 < 200ms` para leituras REST; processamento pesado assíncrono via RabbitMQ.
-- **Escalabilidade & Compatibilidade**: API stateless pronta para consumo simultâneo por Web e App Mobile.
-- **Segurança (OWASP)**: Proteção contra BOLA/IDOR (filtro obrigatório por `UserId` extraído do JWT), Rate Limiting, validação estrita de payload.
-- **Custo (FinOps)**: Uso exclusivo dos recursos de banco (PostgreSQL), fila (RabbitMQ) e Auth (Supabase) já provisionados.
+### `FR-001`: [Concise Requirement Title]
+- **Description**: The system must...
+- **Actors / Roles (Supabase Auth)**: `[Anonymous | Authenticated User | Admin]`
+- **Acceptance Criteria (Gherkin)**:
+  - **Scenario 1 (Happy Path)**:
+    - **Given** that...
+    - **When**...
+    - **Then**...
+  - **Scenario 2 (Business Rule / Expected Failure)**:
+    - **Given** that...
+    - **When**...
+    - **Then** it must return HTTP `400/422` with error code `Domain.RuleViolated`.
 
 ---
 
-## 5. Análise Preventiva de Riscos, Edge Cases e Soluções
+## 4. Non-Functional Requirements (NFR) and Constraints
+- **Performance & Latency**: `p95 < 200ms` for read queries; asynchronous background operations offloaded to RabbitMQ.
+- **Scalability & Cross-Platform**: Stateless API serving both current Web and future Mobile clients.
+- **Security (OWASP)**: Defense against BOLA/IDOR (mandatory filter by `UserId` extracted from JWT), Rate Limiting, strict payload validation.
+- **Cost (FinOps)**: Exclusively leverage already-provisioned database (PostgreSQL), messaging (RabbitMQ), and auth (Supabase).
 
-| ID | Cenário de Falha / Edge Case Previsto | Impacto | Solução Técnica Incorporada na Spec |
+---
+
+## 5. Preventative Risk Analysis, Edge Cases, and Mitigations
+
+| ID | Foreseen Failure Mode / Edge Case | Impact | Technical Solution Built into Spec |
 | :--- | :--- | :--- | :--- |
-| `RISK-01` | Duplo clique do usuário ou retry de rede gerando duplicidade | Alto | Uso de `Idempotency-Key` ou constraint única no PostgreSQL. |
-| `RISK-02` | Banco salva transação, mas RabbitMQ está fora do ar no momento do publish | Alto | Uso obrigatório de **Transactional Outbox Pattern** com MassTransit + EF Core. |
-| `RISK-03` | Usuário tenta acessar ID de recurso pertencente a outro tenant/usuário (IDOR) | Crítico | Query do repositório filtra por `(Id == request.Id && OwnerId == currentUser.Id)`. |
+| `RISK-01` | User double-click or network retry causing duplicate records | High | Use `Idempotency-Key` or PostgreSQL unique constraint. |
+| `RISK-02` | Database commits transaction, but RabbitMQ is temporarily down during publish | High | Mandatory **Transactional Outbox Pattern** with MassTransit + EF Core. |
+| `RISK-03` | User attempts to access record belonging to another tenant/user (IDOR) | Critical | Repository query strictly filters by `(Id == request.Id && OwnerId == currentUser.Id)`. |
 
 ---
 
-## 6. Modelagem de Domínio (DDD) e Arquitetura Hexagonal
+## 6. Domain Modeling (DDD) and Hexagonal Architecture
 
-### 6.1. Bounded Context & Linguagem Ubíqua
-- **Contexto**: `[NomeDoContexto]`
-- **Aggregate Root**: `[NomeDoAggregate]`
-  - **Propriedades e Value Objects**: Ex: `Email`, `Money`, `Cpf`, `OrderId` (`readonly record struct`).
-  - **Invariantes (Regras Protegidas)**:
-    1. `[Regra 1]`
-    2. `[Regra 2]`
-  - **Domain Events Disparados**: `[Ex: OrderCreatedDomainEvent]`
+### 6.1. Bounded Context & Ubiquitous Language
+- **Context**: `[ContextName]`
+- **Aggregate Root**: `[AggregateName]`
+  - **Properties & Value Objects**: e.g. `Email`, `Money`, `OrderId` (`readonly record struct`).
+  - **Invariants (Protected Rules)**:
+    1. `[Rule 1]`
+    2. `[Rule 2]`
+  - **Emitted Domain Events**: `[e.g. OrderCreatedDomainEvent]`
 
-### 6.2. Portas (Interfaces) e Caso de Uso (Application Layer)
+### 6.2. Ports (Interfaces) and Use Cases (Application Layer)
 - **Driving Ports (Commands / Queries)**:
   - `CreateXCommand(string Prop1, decimal Prop2) : ICommand<Result<CreateXResponse>>`
   - `GetXByIdQuery(Guid Id) : IQuery<Result<XDto>>`
 - **Validators (`FluentValidation`)**:
   - `Prop1`: `NotEmpty()`, `MaximumLength(100)`
-- **Driven Ports (Interfaces no Domain/Application)**:
+- **Driven Ports (Domain/Application Interfaces)**:
   - `IXRepository`
   - `IUnitOfWork`
 
 ---
 
-## 7. Contratos de API REST (Web & Mobile)
+## 7. REST API Contracts (Web & Mobile)
 
-### `POST /api/v1/[recurso]`
-- **Autenticação**: `Bearer <Supabase_JWT>` (`RequireAuthorization`)
+### `POST /api/v1/[resource]`
+- **Authentication**: `Bearer <Supabase_JWT>` (`RequireAuthorization`)
 - **Request Body (`application/json`)**:
   ```json
   {
@@ -92,35 +92,34 @@
   }
   ```
 - **Responses**:
-  - `201 Created`: Retorna `Location` header e payload do recurso criado.
-  - `400 Bad Request` / `422 Unprocessable Entity`: Retorna `ProblemDetails` (RFC 7807) com dicionário de erros de validação.
+  - `201 Created`: Returns `Location` header and created resource payload.
+  - `400 Bad Request` / `422 Unprocessable Entity`: Returns `ProblemDetails` (RFC 7807) with validation error dictionary.
   - `401 Unauthorized` / `403 Forbidden`.
-  - `409 Conflict`: Recurso duplicado.
+  - `409 Conflict`: Duplicate resource.
 
 ---
 
-## 8. Mensageria Assíncrona (RabbitMQ) e Cache
+## 8. Asynchronous Messaging (RabbitMQ) and Caching
 
-### 8.1. Eventos de Integração (RabbitMQ / MassTransit)
-- **Evento**: `[NomeDoEventoIntegrationEvent]`
-- **Exchange / Queue**: `[nome-da-fila]`
-- **Produtor**: `[Comando que publica via Outbox]`
-- **Consumidor**: `[Consumer que processa]`
-- **Garantia de Idempotência**: `[Como o consumidor evita processar 2x a mesma mensagem]`
-- **Política de Retry & DLQ**: `3 retries exponenciais (2s, 5s, 15s) -> fila _error`.
+### 8.1. Integration Events (RabbitMQ / MassTransit)
+- **Event**: `[EventNameIntegrationEvent]`
+- **Exchange / Queue**: `[queue-name]`
+- **Producer**: `[Command publishing via Outbox]`
+- **Consumer**: `[Processing consumer]`
+- **Idempotency Guarantee**: `[How consumer avoids processing the same message twice]`
+- **Retry & DLQ Policy**: `3 exponential retries (2s, 5s, 15s) -> _error queue`.
 
-### 8.2. Estratégia de Cache (`HybridCache`)
-- **Chave de Cache**: `"[contexto]:[entidade]:{id}"`
+### 8.2. Caching Strategy (`HybridCache`)
+- **Cache Key**: `"[context]:[entity]:{id}"`
 - **TTL**: `L1 = 5 min`, `L2 = 15 min`
-- **Invalidação**: Remover chave ao executar `Update` ou `Delete`.
+- **Invalidation**: Evict cache key on `Update` or `Delete`.
 
 ---
 
-## 9. Modelo de Dados (PostgreSQL)
+## 9. Data Modeling (PostgreSQL)
 
 ```sql
--- Representação da tabela e índices obrigatórios
-CREATE TABLE nome_tabela (
+CREATE TABLE table_name (
     id UUID PRIMARY KEY,
     owner_id UUID NOT NULL,
     status VARCHAR(30) NOT NULL,
@@ -128,38 +127,37 @@ CREATE TABLE nome_tabela (
     updated_at TIMESTAMPTZ NULL
 );
 
-CREATE INDEX idx_nome_tabela_owner_id ON nome_tabela (owner_id);
+CREATE INDEX idx_table_name_owner_id ON table_name (owner_id);
 ```
 
 ---
 
-## 10. Arquitetura Frontend (Next.js / React + TanStack Query)
-- **Rotas / Páginas**: `/[rota]`
-- **Componentes UI**: `[Lista de componentes limpos e reutilizáveis]`
-- **Hooks TanStack Query**:
-  - `useGet[Recurso](id)` (`queryKey: ['recurso', id]`)
-  - `useCreate[Recurso]()` (invalida `['recurso']` no `onSuccess`)
-- **Estados de Interface Obrigatórios**:
+## 10. Frontend Architecture (Next.js / React + TanStack Query)
+- **Routes / Pages**: `/[route]`
+- **UI Components**: `[List of clean, reusable components]`
+- **TanStack Query Hooks**:
+  - `useGet[Resource](id)` (`queryKey: ['resource', id]`)
+  - `useCreate[Resource]()` (invalidates `['resource']` in `onSuccess`)
+- **Mandatory UI States**:
   - Skeleton/Loading state
-  - Empty state (quando lista vazia)
-  - Error state amigável (lendo `ProblemDetails` da API)
-  - Feedback visual de sucesso (Toast)
+  - Empty state (when query returns `[]`)
+  - User-friendly error state (parsing `ProblemDetails`)
+  - Visual success feedback (Toast)
 
 ---
 
-## 11. Plano de Testes Automatizados
+## 11. Automated Test Plan
 
-| Camada | Tipo de Teste | Ferramenta | Cenários Obrigatórios a Testar |
+| Layer | Test Type | Tool | Mandatory Scenarios to Verify |
 | :--- | :--- | :--- | :--- |
-| **Backend Domain** | Unidade | `xUnit` + `FluentAssertions` | Criação válida do Aggregate, violação de cada invariante, igualdade de Value Objects. |
-| **Backend App** | Unidade | `xUnit` + `NSubstitute` | Sucesso do Handler, falha de validação FluentValidation, retorno de `Result.Failure`. |
-| **Backend Arch** | Arquitetura | `NetArchTest` | `Domain` não referencia `Infrastructure` nem `Api`. |
-| **Backend API/Infra** | Integração | `Testcontainers` + `WebApplicationFactory` | POST `201` persistindo no Postgres, publicação no Outbox/RabbitMQ, bloqueio `401`/`403` BOLA. |
-| **Frontend** | Unidade / Integração | `Vitest` + `Testing Library` + `MSW` | Renderização de dados, validação de formulário Zod, tratamento de erro 400/500 da API. |
-| **End-to-End** | E2E | `Playwright` | Jornada crítica completa do usuário. |
+| **Backend Domain** | Unit | `xUnit` + `FluentAssertions` | Aggregate instantiation, invariant violation enforcement, Value Object equality. |
+| **Backend App** | Unit | `xUnit` + `NSubstitute` | Handler success, FluentValidation errors, `Result.Failure` mapping. |
+| **Backend Arch** | Architecture | `NetArchTest` | `Domain` has zero references to `Infrastructure` or `Api`. |
+| **Backend API/Infra** | Integration | `Testcontainers` + `WebApplicationFactory` | POST `201` persisting to Postgres, Outbox publishing to RabbitMQ, `401`/`403` BOLA blocking. |
+| **Frontend** | Unit / Integration | `Vitest` + `Testing Library` + `MSW` | Data rendering, Zod form validation, API error handling (400/500). |
+| **End-to-End** | E2E | `Playwright` | Complete critical user journey. |
 
 ---
 
-## 12. Validação do Definition of Ready (DoR)
-- [ ] Todos os itens de `docs/pipeline/DEFINITION_OF_READY.md` foram conferidos e aprovados.
-
+## 12. Definition of Ready (DoR) Sign-Off
+- [ ] All checklist items in `docs/pipeline/DEFINITION_OF_READY.md` verified and approved.

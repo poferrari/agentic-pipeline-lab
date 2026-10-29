@@ -1,8 +1,7 @@
-# Regras de Contexto do Workspace (`GEMINI.md`)
+# Workspace Context Rules (`GEMINI.md`)
 
-Este workspace contém uma **Esteira de Desenvolvimento Agêntico Autônoma**.
-Todas as regras arquiteturais, padrões de código (KISS, Clean Code, DDD, Arquitetura Hexagonal, EDA), stack tecnológica (Backend C# Minimal API + RabbitMQ + PostgreSQL + Cache + Supabase Auth; Frontend Next.js/React + TypeScript + TanStack Query) e Quality Gates (DoR, DoD, OWASP, Testes Automatizados, CI/CD GitHub Actions) estão definidos em `@[AGENTS.md](AGENTS.md)`.
+This workspace contains an **Enterprise-grade Autonomous Agentic Software Development Pipeline**.
+All architectural rules, coding standards (KISS, Clean Code, DDD, Hexagonal Architecture, EDA), technology stack (Backend C# Minimal API + RabbitMQ + PostgreSQL + Cache + Supabase Auth; Frontend Next.js/React + TypeScript + TanStack Query), and Quality Gates (DoR, DoD, OWASP, Automated Testing, CI/CD GitHub Actions) are defined in `@[AGENTS.md](AGENTS.md)`.
 
-Sempre siga rigorosamente as diretrizes de `@[AGENTS.md](AGENTS.md)` e utilize as skills em `.agents/skills/` e subagentes em `.agents/agents/` para planejar, especificar, validar, codificar, testar e revisar qualquer software neste repositório.
-**Importante**: Todo código-fonte, testes automatizados, logs, documentação técnica, commits e Pull Requests gerados no repositório DEVEM ser estritamente em inglês (EN-US). As conversas diretas com o usuário permanecem em português.
-
+Always adhere strictly to the guidelines in `@[AGENTS.md](AGENTS.md)` and utilize the skills in `.agents/skills/` and subagents in `.agents/agents/` to plan, specify, validate, code, test, and review any software in this repository.
+**Important**: All source code, automated tests, logs, technical documentation, commits, and Pull Requests generated in this repository MUST be strictly written in technical English (EN-US). Direct conversational interactions with the user remain in Portuguese.

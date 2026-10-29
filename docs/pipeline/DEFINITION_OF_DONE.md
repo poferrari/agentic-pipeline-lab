@@ -1,51 +1,50 @@
-# Definition of Done (DoD) — Critérios de Pronto para Entrega e Pull Request
+# Definition of Done (DoD) — Delivery Criteria and Pull Request Standards
 
-Nenhuma Task, Feature ou Pull Request é considerada **Pronta (Done)** sem que **100% dos itens aplicáveis abaixo** tenham sido verificados de forma automatizada e auditados pelo agente `qa-security-reviewer`.
+No Task, Feature, or Pull Request is considered **Done** without **100% of applicable items below** verified through automated checks and audited by `qa-security-reviewer`.
 
 ---
 
-## 1. Qualidade de Código e Arquitetura (KISS, Clean Code, Hexagonal)
-- [ ] **Isolamento Hexagonal e DDD**:
-  - A camada `Domain` não possui referências a pacotes de infraestrutura (`Microsoft.EntityFrameworkCore`, `MassTransit`, `AspNetCore`, etc.).
-  - Entidades e Aggregates protegem suas invariantes (construtores privados/factory methods, coleções expostas como `IReadOnlyCollection<T>`).
-  - Erros de negócio utilizam o **Result Pattern** (`Result<T>`) e retornam `ProblemDetails` (RFC 7807) na Minimal API; nenhuma exceção é lançada para controle de fluxo esperado.
+## 1. Code Quality and Architecture (KISS, Clean Code, Hexagonal)
+- [ ] **Hexagonal Isolation & DDD**:
+  - The `Domain` layer has zero dependencies on infrastructure packages (`Microsoft.EntityFrameworkCore`, `MassTransit`, `AspNetCore`, etc.).
+  - Entities and Aggregates protect their invariants (private constructors/factory methods, collections exposed as `IReadOnlyCollection<T>`).
+  - Business errors utilize the **Result Pattern** (`Result<T>`) and return standardized `ProblemDetails` (RFC 7807) in the Minimal API; no exceptions are thrown for expected business validation flow.
 - [ ] **KISS & Clean Code**:
-  - Nenhum código morto, comentado, `TODO` sem issue vinculada ou `console.log` / `Console.WriteLine` esquecido.
-  - Métodos coesos, nomes claros, zero duplicação desnecessária (DRY equilibrado com KISS).
-- [ ] **Zero Warnings de Compilação e Linter**:
-  - Backend: `dotnet build --configuration Release -warnaserror` e `dotnet format --verify-no-changes` passam com **0 erros e 0 warnings**.
-  - Frontend: `npm run lint`, `npm run typecheck` (`tsc --noEmit`) e `npm run build` passam com **0 erros e 0 warnings**.
+  - Zero dead code, commented-out blocks, unassigned `TODO` comments, or stray `Console.WriteLine` / `console.log` statements.
+  - Cohesive methods, expressive naming, zero accidental duplication.
+- [ ] **Zero Compilation and Linter Warnings**:
+  - Backend: `dotnet build --configuration Release -warnaserror` and `dotnet format --verify-no-changes` pass with **0 errors and 0 warnings**.
+  - Frontend: `npm run lint`, `npm run typecheck` (`tsc --noEmit`), and `npm run build` pass with **0 errors and 0 warnings**.
 
-## 2. Testes Automatizados (Unidade, Integração e Contrato)
-- [ ] **Testes de Unidade (Backend & Frontend)**:
-  - Todos os testes de unidade passam (`dotnet test --filter Category=Unit` e `npm run test:unit`).
-  - Regras de domínio, Value Objects, Command/Query Handlers e Validators possuem cobertura >= 85% nos novos módulos.
-- [ ] **Testes de Integração**:
-  - Backend: Endpoints da Minimal API, persistência no PostgreSQL e publicação/consumo no RabbitMQ foram testados via `WebApplicationFactory` + `Testcontainers` (ou ambiente de teste isolado).
-  - Frontend: Componentes, páginas e hooks do `TanStack Query` foram testados com `Vitest` + `React Testing Library` + `MSW` cobrindo estados de `loading`, `success`, `empty` e `error`.
-- [ ] **Sincronia de Contratos (Web & Mobile Ready)**:
-  - A especificação OpenAPI/Swagger está atualizada e sincronizada com os tipos TypeScript do frontend.
+## 2. Automated Testing (Unit, Integration, and Contract)
+- [ ] **Unit Tests (Backend & Frontend)**:
+  - All unit tests pass (`dotnet test --filter Category=Unit` and `npm run test:unit`).
+  - Domain rules, Value Objects, Command/Query Handlers, and Validators maintain >= 85% coverage on new modules.
+- [ ] **Integration Tests**:
+  - Backend: Minimal API endpoints, PostgreSQL persistence, and RabbitMQ message publish/consume flows are verified via `WebApplicationFactory` + `Testcontainers` (or isolated test environment).
+  - Frontend: Components, views, and `TanStack Query` hooks are tested using `Vitest` + `React Testing Library` + `MSW` covering `isLoading`, `isSuccess`, `isEmpty`, and `isError` states.
+- [ ] **Contract Synchronization (Web & Mobile Ready)**:
+  - The OpenAPI/Swagger specification is synchronized with TypeScript frontend types.
 
-## 3. Resiliência, Mensageria e Performance
-- [ ] **Idempotência e Consistência (RabbitMQ & DB)**:
-  - Publicação de eventos utiliza o **Transactional Outbox Pattern** (ou garantia transacional equivalente).
-  - Consumidores RabbitMQ são idempotentes e possuem tratamento de retry com backoff exponencial.
-- [ ] **Queries e Cache Otimizados**:
-  - Queries EF Core de leitura usam `.AsNoTracking()`, projeção (`.Select()`) e paginação (`PageSize` limitado). Nenhuma query N+1 introduzida.
-  - Cache (`HybridCache` / `TanStack Query`) configurado com TTL e invalidação correta em mutações.
+## 3. Resilience, Messaging, and Performance
+- [ ] **Idempotency and Consistency (RabbitMQ & DB)**:
+  - Event publishing employs the **Transactional Outbox Pattern** (or equivalent atomic guarantee).
+  - RabbitMQ consumers are idempotent and implement exponential retry backoff.
+- [ ] **Optimized Queries and Caching**:
+  - EF Core read queries apply `.AsNoTracking()`, projections (`.Select()`), and page size caps. Zero N+1 queries introduced.
+  - Caching (`HybridCache` / `TanStack Query`) configured with proper TTL and invalidation triggers on state mutations.
 
-## 4. Segurança OWASP (API & Web Top 10)
-- [ ] **API1:2023 - Broken Object Level Authorization (BOLA/IDOR)**: Todas as rotas que acessam recursos por ID validam que o usuário autenticado (JWT Supabase) tem permissão sobre aquele registro específico.
-- [ ] **API2:2023 & API5:2023 - Broken Authentication & Function Level Authorization**: Endpoints protegidos possuem `.RequireAuthorization()` explícito (ou política específica); rotas públicas possuem `.AllowAnonymous()` intencional e justificado.
-- [ ] **API3:2023 - Broken Object Property Level Authorization (Mass Assignment)**: Endpoints nunca recebem entidades de banco (`DbContext`) diretamente no Request Body; utilizam exclusivamente Request DTOs/Records imutáveis.
-- [ ] **API4:2023 - Unrestricted Resource Consumption**: Paginação máxima imposta (ex.: `MaxPageSize = 100`) e Rate Limiting ativo.
+## 4. OWASP Security (API & Web Top 10)
+- [ ] **API1:2023 - Broken Object Level Authorization (BOLA/IDOR)**: All routes accessing records by ID verify that the authenticated user (Supabase JWT) strictly owns the record.
+- [ ] **API2:2023 & API5:2023 - Broken Authentication & Function Level Authorization**: Protected endpoints enforce `.RequireAuthorization()`; public routes have intentional and documented `.AllowAnonymous()`.
+- [ ] **API3:2023 - Broken Object Property Level Authorization (Mass Assignment)**: Endpoints never bind database entities (`DbContext`) directly from HTTP request bodies; dedicated immutable Request DTOs are used.
+- [ ] **API4:2023 - Unrestricted Resource Consumption**: Max page size enforced (e.g. `MaxPageSize = 100`) and Rate Limiting active.
 - [ ] **API8:2023 - Security Misconfiguration & Secrets**:
-  - Nenhuma credencial, chave do Supabase, connection string ou segredo hardcoded no código ou versionado no Git.
-  - Logs estruturados não vazam PII (dados pessoais sensíveis), senhas ou tokens JWT.
+  - Zero hardcoded credentials, Supabase service keys, connection strings, or secrets in code or git history.
+  - Structured logs do not leak PII, passwords, or raw JWT tokens.
 
-## 5. CI/CD e Documentação do Pull Request
-- [ ] **Pipeline GitHub Actions Verde**: Todos os jobs de build, lint, testes, análise estática (CodeQL / Dependency Review / Trivy) estão configurados e passando.
-- [ ] **Migrations Seguras**: Se houve alteração de banco, a migration do EF Core foi gerada, revisada e testada (up e down).
-- [ ] **Padrão de Idioma Técnico (EN-US)**: Todo o código-fonte, nomes de classes/métodos, comentários, logs estruturados, nomes de testes, commits semânticos e descrição do Pull Request estão 100% em inglês (EN-US).
-- [ ] **Relatório de Pull Request Completo**: O PR contém a descrição detalhada gerada pela skill `pr-delivery-automation` (O que foi feito, Decisões Arquiteturais, Output real dos testes executados, Checklist OWASP e Instruções de Deploy/Rollback).
-
+## 5. CI/CD and Pull Request Documentation
+- [ ] **Green GitHub Actions Pipeline**: All CI jobs for build, linting, tests, and static security analysis (CodeQL / Dependency Review / Trivy) pass.
+- [ ] **Safe Migrations**: If database changes occurred, the EF Core migration was generated, reviewed, and tested (up and down).
+- [ ] **Mandatory Technical Language Standard (EN-US)**: All source code, class/method names, comments, structured logs, test names, semantic commits, and PR descriptions are 100% in technical English (EN-US).
+- [ ] **Comprehensive Pull Request Report**: The PR description follows the template from `pr-delivery-automation` (Executive Summary, Architectural Decisions, Executed Test Evidence, OWASP Checklist, and Deployment/Rollback Instructions).
