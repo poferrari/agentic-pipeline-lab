@@ -2,7 +2,6 @@ using App.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using Testcontainers.RabbitMq;
@@ -16,6 +15,8 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
     private readonly RabbitMqContainer? _rabbitMqContainer;
 
     public bool IsDockerEnvironmentActive { get; private set; }
+    public string? RabbitMqConnectionString => _rabbitMqContainer?.GetConnectionString();
+    public string? DatabaseConnectionString => _postgresContainer?.GetConnectionString();
 
     public MarketPulseTestcontainersFactory()
     {
@@ -56,9 +57,9 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 await dbContext.Database.EnsureCreatedAsync().ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex)
             {
-                // Docker daemon is not active on host machine; fallback to adaptive In-Memory mode
+                Console.WriteLine($"[Testcontainers Warning] Docker fallback to in-memory: {ex.Message}");
                 IsDockerEnvironmentActive = false;
             }
         }
@@ -68,25 +69,19 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.ConfigureAppConfiguration((_, configBuilder) =>
+        builder.UseSetting("Auth:AllowDemoHeader", "true");
+
+        if (_postgresContainer is not null && _rabbitMqContainer is not null)
         {
-            var testConfig = new Dictionary<string, string?>
-            {
-                ["Auth:AllowDemoHeader"] = "true"
-            };
-
-            if (IsDockerEnvironmentActive && _postgresContainer is not null && _rabbitMqContainer is not null)
-            {
-                testConfig["ConnectionStrings:Database"] = _postgresContainer.GetConnectionString();
-                testConfig["ConnectionStrings:RabbitMq"] = _rabbitMqContainer.GetConnectionString();
-            }
-
-            configBuilder.AddInMemoryCollection(testConfig);
-        });
+            builder.UseSetting("ConnectionStrings:Database", _postgresContainer.GetConnectionString());
+            builder.UseSetting("ConnectionStrings:RabbitMq", _rabbitMqContainer.GetConnectionString());
+        }
     }
 
     public new async Task DisposeAsync()
     {
+        await base.DisposeAsync().ConfigureAwait(false);
+
         if (_postgresContainer is not null)
         {
             try
@@ -110,8 +105,5 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
                 // Ignore disposal errors
             }
         }
-
-        await base.DisposeAsync().ConfigureAwait(false);
     }
 }
-

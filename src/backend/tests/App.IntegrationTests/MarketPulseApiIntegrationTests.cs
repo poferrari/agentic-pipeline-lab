@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using App.Api.Endpoints;
 using App.Api.Middleware;
 using App.Application.MarketPulse.DTOs;
+using App.Domain.Common;
 using App.IntegrationTests.Infrastructure;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,9 @@ using Xunit;
 
 namespace App.IntegrationTests;
 
+[Collection(MarketPulseTestGroupDefinition.CollectionName)]
 public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFactory factory)
-    : IClassFixture<MarketPulseTestcontainersFactory>
 {
-    private static readonly Guid UserAId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-    private static readonly Guid UserBId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-
     [Fact]
     public void TestEnvironment_Should_Be_Properly_Configured()
     {
@@ -103,11 +101,15 @@ public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFact
     [Fact]
     public async Task Watchlist_FullCrudLifecycle_And_BolaIdorProtection_ShouldEnforceStrictOwnerIsolation()
     {
+        // Independent test IDs to guarantee zero chronological or logical dependencies between tests
+        var userAId = Guid.NewGuid();
+        var userBId = Guid.NewGuid();
+
         using var clientA = factory.CreateClient();
-        clientA.DefaultRequestHeaders.Add(HybridSupabaseOrDemoAuthHandler.DemoHeaderName, UserAId.ToString());
+        clientA.DefaultRequestHeaders.Add(HybridSupabaseOrDemoAuthHandler.DemoHeaderName, userAId.ToString());
 
         using var clientB = factory.CreateClient();
-        clientB.DefaultRequestHeaders.Add(HybridSupabaseOrDemoAuthHandler.DemoHeaderName, UserBId.ToString());
+        clientB.DefaultRequestHeaders.Add(HybridSupabaseOrDemoAuthHandler.DemoHeaderName, userBId.ToString());
 
         // 1. User A creates a WatchItem for EUR -> BRL
         var createRequest = new CreateWatchItemRequest("EUR", "BRL", 6.10m, NotifyWhenAbove: true, "EUR export alert");
@@ -116,7 +118,7 @@ public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFact
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var createdItem = await createResponse.Content.ReadFromJsonAsync<WatchItemDto>();
         createdItem.Should().NotBeNull();
-        createdItem!.OwnerId.Should().Be(UserAId);
+        createdItem!.OwnerId.Should().Be(userAId);
         createdItem.BaseCurrency.Should().Be("EUR");
         createdItem.TargetCurrency.Should().Be("BRL");
         createdItem.CurrentRate.Should().BeGreaterThan(0m);
