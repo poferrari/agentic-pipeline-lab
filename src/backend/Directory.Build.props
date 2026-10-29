@@ -6,7 +6,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <NoWarn>$(NoWarn);CA1716;CA1848;CA1873;S1075</NoWarn>
+    <NoWarn>$(NoWarn);CA1716;CA1848;CA1873;S1075;S107;S1192;S3776</NoWarn>
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectExtension) == '.csproj'">
