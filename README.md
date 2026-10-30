@@ -250,13 +250,13 @@ npm run test
 
 The project is continuously deployed to production containers on Render:
 
-| Service | Live URL | Description |
-| :--- | :--- | :--- |
-| **Web Frontend** | [`https://agentic-pipeline-lab-web.onrender.com/`](https://agentic-pipeline-lab-web.onrender.com/) | Next.js 14 Web Application |
-| **Backend REST API** | [`https://agentic-pipeline-lab-api.onrender.com/`](https://agentic-pipeline-lab-api.onrender.com/) | C# .NET 9 Minimal API |
-| **Liveness Check** | [`/health/live`](https://agentic-pipeline-lab-api.onrender.com/health/live) | Health probe for orchestrators |
-| **Swagger UI** | [`/swagger`](https://agentic-pipeline-lab-api.onrender.com/swagger) | Interactive API exploration |
-| **Grafana SRE** | [Grafana Cloud Dashboard](https://bigveranda1683.grafana.net/d/povdvxv/9de3a08) | Real-time Observability & Telemetry |
+| Service | GitHub Environment | Live URL | Description |
+| :--- | :--- | :--- | :--- |
+| **Web Frontend** | `main - frontend - webapp` | [`https://agentic-pipeline-lab-web.onrender.com/`](https://agentic-pipeline-lab-web.onrender.com/) | Next.js 14 Web Application (path-filtered CD) |
+| **Backend REST API** | `main - backend - api` | [`https://agentic-pipeline-lab-api.onrender.com/`](https://agentic-pipeline-lab-api.onrender.com/) | C# .NET 9 Minimal API (path-filtered CD) |
+| **Liveness Check** | `main - backend - api` | [`/health/live`](https://agentic-pipeline-lab-api.onrender.com/health/live) | Health probe for orchestrators |
+| **Swagger UI** | `main - backend - api` | [`/swagger`](https://agentic-pipeline-lab-api.onrender.com/swagger) | Interactive API exploration |
+| **Grafana SRE** | *Observability* | [Grafana Cloud Dashboard](https://bigveranda1683.grafana.net/d/povdvxv/9de3a08) | Real-time Observability & Telemetry |
 
 ---
 
