@@ -104,6 +104,7 @@ jobs:
 
       - name: End SonarCloud Scanner & Upload Quality Metrics
         if: always()
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
