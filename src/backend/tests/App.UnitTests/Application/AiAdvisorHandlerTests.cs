@@ -79,18 +79,18 @@ public sealed class AiAdvisorHandlerTests
         result.Error.Code.Should().Be("Ai.ValidationFailed");
     }
 
+    private static OpenAiChatAdvisorAdapter CreateTestAdapter()
+    {
+        var config = new ConfigurationBuilder().Build();
+        return new OpenAiChatAdvisorAdapter(new HttpClient(), config, NullLogger<OpenAiChatAdvisorAdapter>.Instance);
+    }
+
     [Fact]
     public async Task OpenAiChatAdvisorAdapter_WithoutApiKey_RejectsOffTopicQueryPolitely()
     {
-        // Arrange
-        var config = new ConfigurationBuilder().Build(); // No Ai:ApiKey
-        using var httpClient = new HttpClient();
-        var adapter = new OpenAiChatAdvisorAdapter(httpClient, config, NullLogger<OpenAiChatAdvisorAdapter>.Instance);
-
-        // Act
+        var adapter = CreateTestAdapter();
         var result = await adapter.GetAdviceAsync("Can you give me a recipe for chocolate cake?", null, "No market data");
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Reply.Should().Contain("outside this scope");
         result.Value.SuggestedActions.Should().NotBeEmpty();
@@ -99,15 +99,9 @@ public sealed class AiAdvisorHandlerTests
     [Fact]
     public async Task OpenAiChatAdvisorAdapter_WithoutApiKey_AnswersArchitectureQuery()
     {
-        // Arrange
-        var config = new ConfigurationBuilder().Build();
-        using var httpClient = new HttpClient();
-        var adapter = new OpenAiChatAdvisorAdapter(httpClient, config, NullLogger<OpenAiChatAdvisorAdapter>.Instance);
-
-        // Act
+        var adapter = CreateTestAdapter();
         var result = await adapter.GetAdviceAsync("Explain the Hexagonal Architecture and DDD layers", null, "Context data");
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Reply.Should().Contain("Hexagonal Architecture (Ports & Adapters)");
         result.Value.Reply.Should().Contain("MassTransit Transactional Outbox");

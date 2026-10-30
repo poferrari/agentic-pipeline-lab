@@ -147,30 +147,27 @@ public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFact
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    private async Task<HttpResponseMessage> SendAiChatPromptAsync(string message)
+    {
+        using var client = factory.CreateClient();
+        return await client.PostAsJsonAsync("/api/v1/ai/chat", new AskAiAdvisorRequest(message));
+    }
+
     [Fact]
     public async Task AskAiAdvisor_WithValidInScopePrompt_Returns200OkWithDomainAnswer()
     {
-        using var client = factory.CreateClient();
-        var request = new AskAiAdvisorRequest("Explain the Hexagonal Architecture and Outbox alerts in MarketPulse");
-
-        var response = await client.PostAsJsonAsync("/api/v1/ai/chat", request);
-
+        var response = await SendAiChatPromptAsync("Explain the Hexagonal Architecture and Outbox alerts in MarketPulse");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<AiAdvisorResponseDto>();
         result.Should().NotBeNull();
-        result!.Reply.Should().NotBeNullOrWhiteSpace();
-        result.Reply.Should().Contain("Hexagonal");
+        result!.Reply.Should().Contain("Hexagonal");
         result.SuggestedActions.Should().NotBeEmpty();
     }
 
     [Fact]
     public async Task AskAiAdvisor_WithOutOfScopePrompt_Returns200OkWithPoliteRefusal()
     {
-        using var client = factory.CreateClient();
-        var request = new AskAiAdvisorRequest("What is the recipe for chocolate cake and who won the soccer game?");
-
-        var response = await client.PostAsJsonAsync("/api/v1/ai/chat", request);
-
+        var response = await SendAiChatPromptAsync("What is the recipe for chocolate cake and who won the soccer game?");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<AiAdvisorResponseDto>();
         result.Should().NotBeNull();
@@ -181,11 +178,7 @@ public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFact
     [Fact]
     public async Task AskAiAdvisor_WithEmptyPrompt_Returns400BadRequest()
     {
-        using var client = factory.CreateClient();
-        var request = new AskAiAdvisorRequest(string.Empty);
-
-        var response = await client.PostAsJsonAsync("/api/v1/ai/chat", request);
-
+        var response = await SendAiChatPromptAsync(string.Empty);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
