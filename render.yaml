@@ -1,4 +1,4 @@
-# Render Blueprint Specification (Infrastructure as Code for Render Containers) - SRE v17
+# Render Blueprint Specification (Infrastructure as Code for Render Containers) - SRE v18
 # Project: prj-d6rakhshg0os73a5ahqg | Environment: evm-d6rakhshg0os73a5ahr0
 
 services:
@@ -10,6 +10,16 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /health/live
+    buildFilter:
+      paths:
+        - src/backend/**
+        - Dockerfile
+      ignoredPaths:
+        - "**/*.md"
+        - docs/**
+        - .agents/**
+        - tests/load/**
+        - src/frontend/**
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -52,6 +62,15 @@ services:
     rootDir: src/frontend
     buildCommand: npm install && npm run build
     startCommand: npm run start
+    buildFilter:
+      paths:
+        - src/frontend/**
+      ignoredPaths:
+        - "**/*.md"
+        - docs/**
+        - .agents/**
+        - tests/load/**
+        - src/backend/**
     envVars:
       - key: NODE_VERSION
         value: 20.18.0
