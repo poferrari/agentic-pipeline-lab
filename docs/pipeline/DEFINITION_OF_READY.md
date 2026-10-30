@@ -46,3 +46,9 @@ The purpose of the **DoR** is to eliminate rework, ambiguity, and guesswork duri
   - List of integration tests (`Api` + `PostgreSQL` + `RabbitMQ` / `MSW` for frontend) to be written.
 - [ ] **Atomic and Independent Tasks**: Work is broken into small, sequential tasks with clear file boundaries and verification commands.
 - [ ] **Mandatory Technical Language Standard (EN-US)**: The technical specification (`docs/specs/`), user stories, acceptance criteria, ubiquitous language terms, and task descriptions are strictly written in technical English (EN-US).
+
+## 6. User Experience (UX), Usability & Accessibility Planning
+- [ ] **The 4 Data States Mapped**: The technical specification documents explicit designs for: Loading (structural skeleton), Empty State (friendly message + actionable CTA), Error State (human-readable RFC 7807 ProblemDetails + 1-click retry button), and Success/Data State.
+- [ ] **Cognitive Usability & Touch Targets**: Primary user journeys respect Fitts's Law (minimum 44x44px touch targets on mobile) and Hick's Law (progressive disclosure for advanced settings to minimize choice overload).
+- [ ] **Destructive Action Safety**: High-impact or destructive actions (deletion, state reset) include either an explicit confirmation step or an immediate undo mechanism (e.g. 5-second toast).
+- [ ] **Accessibility (a11y) Architecture**: Keyboard navigation flow (`Tab`, `Shift+Tab`, `Escape` to close overlays), accessible button naming, and WCAG 2.1 AA color contrast compliance planned upfront.
