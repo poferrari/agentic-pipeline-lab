@@ -6,7 +6,12 @@ import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { AiChatDrawer } from '@/features/ai/components/ai-chat-drawer';
+import dynamic from 'next/dynamic';
+
+const AiChatDrawer = dynamic(
+  () => import('@/features/ai/components/ai-chat-drawer').then((mod) => mod.AiChatDrawer),
+  { ssr: false }
+);
 
 const inter = Inter({
   subsets: ['latin'],

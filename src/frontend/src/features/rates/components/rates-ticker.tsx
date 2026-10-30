@@ -110,14 +110,14 @@ export function RatesTicker() {
                     <span>
                       {baseCurrency}/{currency}
                     </span>
-                    <span className="text-[10px] text-slate-400 uppercase">ECB</span>
+                    <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase">ECB</span>
                   </div>
                   <div className="mt-2">
                     <span className="text-lg font-bold text-slate-900 dark:text-white">
                       {rate !== undefined ? rate.toFixed(4) : '—'}
                     </span>
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-400">
+                  <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
                     1 {baseCurrency} = {rate !== undefined ? `${rate.toFixed(4)} ${currency}` : 'N/A'}
                   </div>
                 </div>
