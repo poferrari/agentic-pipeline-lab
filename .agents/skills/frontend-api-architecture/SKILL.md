@@ -152,6 +152,7 @@ Every frontend component, page, and feature must be designed to pass Google Page
 4. **Zero Layout Shift (CLS = 0.000)**:
    - Always define explicit `width` and `height` or aspect-ratio boxes for images and asynchronous skeleton placeholders.
 
+
 ---
 
 ## 6. UX, Cognitive Heuristics & Interface Design Guidelines
