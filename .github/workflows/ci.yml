@@ -78,7 +78,8 @@ jobs:
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.cs.opencover.reportsPaths="${{ github.workspace }}/src/backend/TestResults/**/coverage.opencover.xml" \
             /d:sonar.cs.vstest.reportsPaths="${{ github.workspace }}/src/backend/TestResults/**/*.trx" \
-            /d:sonar.coverage.exclusions="**/tests/**,**/Program.cs,**/AppDbContext.cs"
+            /d:sonar.coverage.exclusions="**/tests/**,**/Program.cs,**/AppDbContext.cs" \
+            /d:sonar.cpd.exclusions="**/tests/**,**/*.test.*,**/docs/**,**/specs/**"
 
       - name: Build Solution (Zero Warnings Allowed = -warnaserror)
         run: dotnet build MarketPulse.sln --configuration Release --no-restore -warnaserror

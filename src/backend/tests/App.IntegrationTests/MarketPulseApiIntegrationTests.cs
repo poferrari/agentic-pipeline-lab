@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using App.Api.Endpoints;
 using App.Api.Middleware;
 using App.Application.MarketPulse.DTOs;
+using App.Application.MarketPulse.Queries.AskAiAdvisor;
 using App.Domain.Common;
 using App.IntegrationTests.Infrastructure;
 using FluentAssertions;
@@ -144,5 +145,40 @@ public sealed class MarketPulseApiIntegrationTests(MarketPulseTestcontainersFact
         // 5. User A deletes their WatchItem -> 204 No Content
         var deleteResponse = await clientA.DeleteAsync(new Uri($"/api/v1/watchlist/{createdItem.Id}", UriKind.Relative));
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    private async Task<HttpResponseMessage> SendAiChatPromptAsync(string message)
+    {
+        using var client = factory.CreateClient();
+        return await client.PostAsJsonAsync("/api/v1/ai/chat", new AskAiAdvisorRequest(message));
+    }
+
+    [Fact]
+    public async Task AskAiAdvisor_WithValidInScopePrompt_Returns200OkWithDomainAnswer()
+    {
+        var response = await SendAiChatPromptAsync("Explain the Hexagonal Architecture and Outbox alerts in MarketPulse");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<AiAdvisorResponseDto>();
+        result.Should().NotBeNull();
+        result!.Reply.Should().Contain("Hexagonal");
+        result.SuggestedActions.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task AskAiAdvisor_WithOutOfScopePrompt_Returns200OkWithPoliteRefusal()
+    {
+        var response = await SendAiChatPromptAsync("What is the recipe for chocolate cake and who won the soccer game?");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<AiAdvisorResponseDto>();
+        result.Should().NotBeNull();
+        result!.Reply.Should().Contain("outside this scope");
+        result.SuggestedActions.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task AskAiAdvisor_WithEmptyPrompt_Returns400BadRequest()
+    {
+        var response = await SendAiChatPromptAsync(string.Empty);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

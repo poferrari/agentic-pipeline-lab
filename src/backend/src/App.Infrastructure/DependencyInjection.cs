@@ -2,6 +2,8 @@ using App.Application.Abstractions;
 using App.Application.MarketPulse.Events;
 using App.Domain.Common;
 using App.Domain.MarketPulse.Repositories;
+using App.Domain.MarketPulse.Ports;
+using App.Infrastructure.Ai;
 using App.Infrastructure.ExternalApis.Frankfurter;
 using App.Infrastructure.Messaging;
 using App.Infrastructure.Persistence;
@@ -41,6 +43,12 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<ICurrencyWatchItemRepository, CurrencyWatchItemRepository>();
+
+        services.AddHttpClient<IChatAdvisor, OpenAiChatAdvisorAdapter>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.Add("User-Agent", "MarketPulseLab-AiAdvisor/1.0");
+        });
 
 #pragma warning disable EXTEXP0018
         services.AddHybridCache();
