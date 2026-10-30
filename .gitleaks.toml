@@ -1,0 +1,12 @@
+[allowlist]
+description = "Allowlist for public client-side Supabase anonymous JWT keys and test mocks"
+regexes = [
+    '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaHBiZGZ0b2hqZXltendrYmVlIiwicm9sZSI6ImFub24i''',
+    '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.e30\.placeholder''',
+    '''test-1779571989455@gmail\.com''',
+    '''Test@123456'''
+]
+paths = [
+    '''^\.agents/''',
+    '''^docs/'''
+]
