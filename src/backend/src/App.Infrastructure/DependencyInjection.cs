@@ -54,8 +54,8 @@ public static class DependencyInjection
         services.AddHybridCache();
 #pragma warning restore EXTEXP0018
 
-        var frankfurterBaseUrl = configuration["ExternalApis:FrankfurterBaseUrl"]
-            ?? "https://api.frankfurter.app/";
+        var frankfurterBaseUrl = configuration["ExternalApis:FrankfurterBaseUrl"];
+
 
         services.Configure<LeakyBucketOptions>(
             configuration.GetSection(LeakyBucketOptions.SectionName));
@@ -63,7 +63,10 @@ public static class DependencyInjection
 
         services.AddHttpClient<IMarketExchangeProvider, FrankfurterExchangeAdapter>(client =>
         {
-            client.BaseAddress = new Uri(frankfurterBaseUrl);
+            if (!string.IsNullOrWhiteSpace(frankfurterBaseUrl) && Uri.TryCreate(frankfurterBaseUrl, UriKind.Absolute, out var uri))
+            {
+                client.BaseAddress = uri;
+            }
             client.Timeout = TimeSpan.FromSeconds(5);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
             client.DefaultRequestHeaders.Add("User-Agent", "MarketPulseLab-HexagonalApi/1.0");

@@ -62,10 +62,10 @@ public sealed class OpenAiChatAdvisorAdapter : IChatAdvisor
             ?? _configuration["OPENAI_API_KEY"];
 
         var modelId = _configuration["Ai:ModelId"] ?? "gpt-4o-mini";
-        var endpoint = _configuration["Ai:Endpoint"] ?? "https://api.openai.com/v1";
+        var endpoint = _configuration["Ai:Endpoint"] ?? string.Empty;
 
         // If no secret key is provided (e.g. CI/local dev without LLM billing), execute deterministic domain engine
-        if (string.IsNullOrWhiteSpace(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(endpoint))
         {
             _logger.LogInformation("No Ai:ApiKey configured. Running MarketPulse deterministic domain advisor engine.");
             return Result.Success(EvaluateDeterministicEngine(userPrompt, contextualMarketData, "rule-engine-domain-fallback"));
