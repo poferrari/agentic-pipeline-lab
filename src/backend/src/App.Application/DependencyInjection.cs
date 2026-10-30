@@ -1,5 +1,6 @@
 using App.Application.MarketPulse.Commands.CreateWatchItem;
 using App.Application.MarketPulse.Commands.DeleteWatchItem;
+using App.Application.MarketPulse.Queries.AskAiAdvisor;
 using App.Application.MarketPulse.Queries.GetExchangeRates;
 using App.Application.MarketPulse.Queries.GetWatchItemById;
 using App.Application.MarketPulse.Queries.GetWatchItems;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<GetWatchItemsQueryHandler>();
         services.AddScoped<GetWatchItemByIdQueryHandler>();
         services.AddScoped<DeleteWatchItemCommandHandler>();
+        services.AddScoped<AskAiAdvisorQueryHandler>();
 
         return services;
     }

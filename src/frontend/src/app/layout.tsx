@@ -6,6 +6,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { AiChatDrawer } from '@/features/ai/components/ai-chat-drawer';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -94,6 +95,7 @@ export default function RootLayout({
             <main className="flex-1 w-full" id="main-content">
               {children}
             </main>
+            <AiChatDrawer />
             <Footer />
           </AuthProvider>
         </QueryProvider>
