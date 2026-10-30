@@ -322,3 +322,15 @@ services.AddMassTransit(x =>
 2. **Real Integration Tests (`App.IntegrationTests`)**:
    - Utilize Docker containers managed via `Testcontainers.PostgreSql` and `Testcontainers.RabbitMq`.
    - Initialize containers in shared fixtures (`IAsyncLifetime`) to eliminate per-test restart overhead.
+
+---
+
+## 9. Multi-LLM Provider Architecture & Resilient Fallback Pattern
+
+When implementing AI or LLM capabilities in .NET:
+1. **Hexagonal Domain Port**: The Domain defines an interface (e.g. `IChatAdvisor`) without knowing about any AI SDK or provider.
+2. **Universal OpenAI-Compatible REST Protocol**: Google Gemini, Groq, DeepSeek, Mistral, Ollama, and OpenAI all support `POST /chat/completions`. Use a generic HTTP adapter rather than provider-specific tight coupling.
+3. **Resilient Fallback Chaining**:
+   - Implement cascading provider attempts (e.g., Gemini 2.5 Flash -> Groq Llama 3.3 -> Local deterministic rules).
+   - If an external provider returns an error (such as 404 deprecated model, 429 quota exhausted, or network timeout), log the event and fallback gracefully without throwing unhandled 500 exceptions to users.
+4. **.NET Ecosystem Standard**: Utilize `Microsoft.Extensions.AI` (`IChatClient`) or Semantic Kernel connectors for enterprise model swappability.

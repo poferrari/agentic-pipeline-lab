@@ -132,3 +132,22 @@ No component or API hook is complete without automated tests covering:
 1. **Loading state (`isLoading`) and successful rendering (`200 OK`)** intercepted via **MSW (`http.get`, `http.post`)**.
 2. **Form validation (`Zod`)** preventing invalid submissions before calling the API.
 3. **Resilient API error handling (`400/422 ProblemDetails` or `500`)**, displaying clear feedback to the user.
+
+---
+
+## 5. PageSpeed & WCAG Accessibility Guardrails (Lighthouse 100/100)
+
+Every frontend component, page, and feature must be designed to pass Google PageSpeed Insights with 95+ (ideally 100/100) across all metrics:
+
+1. **WCAG 2.1 AA Color Contrast Ratio (Minimum 4.5:1 for Normal Text)**:
+   - Never use pale Tailwind shades like `text-slate-400` or `text-gray-400` directly on white or light gray backgrounds (contrast drops below 3:1).
+   - Use `text-slate-600 dark:text-slate-400` for subtitles/badges on light backgrounds.
+   - Use `text-emerald-700 dark:text-emerald-400` instead of `text-emerald-600` for status indicators to guarantee > 5.0:1 contrast.
+2. **WCAG 2.5.3 (Label in Name Compliance)**:
+   - When adding `aria-label` to buttons or links that contain visible text, the accessible label **MUST start with or contain the exact visible text**.
+   - Example: Button displaying `"New Alert"` must use `aria-label="New Alert - Create new alert"` (never an unrelated phrase like `aria-label="Create item"` which confuses speech recognition and screen readers).
+3. **Bundle Splitting & Critical Path Optimization (`next/dynamic`)**:
+   - Interactive modals, chat drawers, and heavy third-party widgets not visible on initial render must be loaded asynchronously via `next/dynamic` with `{ ssr: false }`.
+   - Keep the First Load JS shared by all pages strictly below 100 KiB.
+4. **Zero Layout Shift (CLS = 0.000)**:
+   - Always define explicit `width` and `height` or aspect-ratio boxes for images and asynchronous skeleton placeholders.

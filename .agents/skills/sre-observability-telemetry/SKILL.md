@@ -173,3 +173,20 @@ Distributed event-driven architectures must monitor the **4 RabbitMQ Golden Heal
 | **Queue Backlog (Ready Messages)** | `rabbitmq_queue_messages_ready` | Consumption lag (producers outpacing consumers) | Alert if growing monotonically for > 5 min. Scale worker replicas. |
 | **Dead Letter / Poison Messages** | `rabbitmq_queue_messages{queue=~".*_error"}` | Poison messages, database serialization bugs, or contract mismatch | Alert on **ANY** message in `_error` queue (`count > 0`) |
 | **Connection Churn Rate** | `rate(rabbitmq_connections_opened_total[5m])` | Anti-pattern: opening TCP connections per request/message | Alert if churn > 1 conn/sec. Enforce singleton `IConnection`. |
+
+---
+
+## 5. Grafana Dashboard Design & k6 Capacity Testing Standards
+
+### 5.1. Route-Level Granularity on Status Code Panels
+- **Anti-Pattern**: Aggregating HTTP status codes solely by `http_response_status_code` (`sum(...) by (http_response_status_code)`). This hides which path failed and masks business route errors under high volumes of health checks (`/health/live`).
+- **Standard**: Always group by `(http_route, http_response_status_code)`:
+  ```promql
+  sum(increase(http_server_request_duration_seconds_count{http_route=~"$route", http_response_status_code=~"$status_code"}[1m])) by (http_route, http_response_status_code)
+  ```
+- **Incident Matrix**: Provide a dedicated **4xx / 5xx Faults by Route** panel and an **Endpoint Health Table** with Throughput, 2xx, 4xx, 5xx, Error Rate %, and P95 Latency.
+- **Template Variables**: Always include `$route` and `$status_code` multi-select dropdowns at the top of the dashboard.
+
+### 5.2. Automated Load Testing with k6
+- Include a realistic multi-user journey script in `tests/load/` simulating concurrent virtual users (VUs with distinct UUIDs) covering frontend and all backend endpoints.
+- Monitor rate-limiting thresholds (HTTP 429) to ensure container resource protection without server crashes (0% 5xx errors).
