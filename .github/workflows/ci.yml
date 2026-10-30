@@ -3,8 +3,18 @@ name: "CI/CD Quality, OWASP Security & Render Container Pipeline"
 on:
   push:
     branches: ["main", "develop"]
+    paths:
+      - "src/backend/**"
+      - "Dockerfile"
+      - ".github/workflows/ci.yml"
+      - "render.yaml"
   pull_request:
     branches: ["main", "develop"]
+    paths:
+      - "src/backend/**"
+      - "Dockerfile"
+      - ".github/workflows/ci.yml"
+      - "render.yaml"
   workflow_dispatch:
 
 permissions:
