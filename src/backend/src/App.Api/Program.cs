@@ -265,7 +265,10 @@ app.MapGet("/", () => TypedResults.Ok(new
     endpoints = EndpointCatalog
 })).AllowAnonymous().WithTags("System");
 
-app.MapHealthChecks("/health/live").AllowAnonymous();
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false
+}).AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 
 app.MapEndpoints();
