@@ -80,6 +80,9 @@ public static class DependencyInjection
                     o.UsePostgres();
                     o.UseBusOutbox();
                     o.QueryDelay = TimeSpan.FromSeconds(1);
+                    o.DuplicateDetectionWindow = TimeSpan.FromMinutes(30);
+                    o.QueryMessageLimit = 100;
+                    o.QueryTimeout = TimeSpan.FromSeconds(30);
                 });
             }
 
@@ -94,11 +97,16 @@ public static class DependencyInjection
                         e.Bind<CurrencyAlertNotificationEvent>();
                         e.Bind<ICurrencyAlertConsumerContract>();
 
-                        e.UseMessageRetry(r => r.Exponential(
-                            retryLimit,
-                            TimeSpan.FromSeconds(initialIntervalSeconds),
-                            TimeSpan.FromSeconds(maxIntervalSeconds),
-                            TimeSpan.FromSeconds(intervalDeltaSeconds)));
+                        e.UseMessageRetry(r =>
+                        {
+                            r.Ignore<ArgumentException>();
+                            r.Ignore<ArgumentNullException>();
+                            r.Exponential(
+                                retryLimit,
+                                TimeSpan.FromSeconds(initialIntervalSeconds),
+                                TimeSpan.FromSeconds(maxIntervalSeconds),
+                                TimeSpan.FromSeconds(intervalDeltaSeconds));
+                        });
 
                         if (!string.IsNullOrWhiteSpace(databaseConnectionString))
                         {
@@ -106,6 +114,12 @@ public static class DependencyInjection
                         }
 
                         e.ConfigureConsumer<CurrencyAlertConsumer>(context);
+                        if (configuration.GetValue("RabbitMq:UseQuorumQueues", false))
+                        {
+                            e.SetQuorumQueue();
+                            e.SetQueueArgument("x-delivery-limit", 5);
+                        }
+                        e.ConcurrentMessageLimit = 8;
                         e.PrefetchCount = 16;
                     });
 

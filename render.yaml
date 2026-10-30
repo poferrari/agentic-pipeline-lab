@@ -23,6 +23,12 @@ services:
         value: "true"
       - key: Supabase__Url
         value: https://jrhpbdftohjeymzwkbee.supabase.co
+      - key: Cors__AllowedOrigins__0
+        value: http://localhost:3000
+      - key: Cors__AllowedOrigins__1
+        value: https://agentic-pipeline-lab.onrender.com
+      - key: Cors__AllowedOrigins__2
+        value: https://agentic-pipeline-lab-web.onrender.com
       - key: OTEL_SERVICE_NAME
         value: agentic-pipeline-lab-api
       - key: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -30,4 +36,22 @@ services:
       - key: OTEL_EXPORTER_OTLP_PROTOCOL
         value: http/protobuf
       - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+
+  - type: web
+    name: agentic-pipeline-lab-web
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: src/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_PUBLIC_API_URL
+        value: https://agentic-pipeline-lab-api.onrender.com
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://jrhpbdftohjeymzwkbee.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
         sync: false

@@ -1,0 +1,4 @@
+# Trivy Ignore File
+# Public client-side Supabase anonymous tokens
+src/frontend/src/lib/supabase/client.ts
+.gitleaks.toml

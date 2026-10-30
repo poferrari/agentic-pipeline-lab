@@ -1,0 +1,10 @@
+[allowlist]
+description = "Allowlist for public client mocks and test data"
+regexes = [
+    '''test-1779571989455@gmail\.com''',
+    '''Test@123456'''
+]
+paths = [
+    '''^\.agents/''',
+    '''^docs/'''
+]

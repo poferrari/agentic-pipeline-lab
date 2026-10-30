@@ -100,10 +100,12 @@ Consult and engage the resources below according to the pipeline phase:
   - `frontend-web-developer`: React/Next.js, TypeScript, TanStack Query, Zod, Supabase Auth, and Vitest/Playwright senior engineer.
   - `qa-security-reviewer`: Quality auditor enforcing Clean Code, KISS, Testing, OWASP API Top 10, and PR reviews.
   - `devops-ci-engineer`: Platform engineer for GitHub Actions (CI/CD), Docker, quality automation, and FinOps cost controls.
+  - `legal-compliance-privacy-officer`: Legal, Brazilian LGPD (Lei 13.709/2018), GDPR, and sensitive customer data protection officer.
 - **Operational Skills (`.agents/skills/`)**:
   - `discovery-and-spec`: Transforming an idea or workspace into a full technical Spec, FR/NFR, ADRs, and atomic Tasks without ambiguity.
   - `csharp-hexagonal-ddd`: Code recipes and standards for C# Minimal API, Hexagonal Architecture, Result Pattern, RabbitMQ Outbox, Cache, and Supabase Auth.
   - `frontend-api-architecture`: Modern frontend architecture for consuming REST APIs, TanStack Query, OpenAPI codegen, and MSW/Vitest testing.
+  - `lgpd-privacy-security-governance`: Brazilian LGPD compliance, Privacy by Design, PII masking, data minimization, and consent auditing.
   - `owasp-quality-gate`: Executable security checklist (OWASP), linting, test coverage, and automated code review.
   - `pr-delivery-automation`: Preparing semantic commits, executing local/CI validation test suites, and publishing detailed GitHub PRs.
   - `sre-observability-telemetry`: SRE standards, OpenTelemetry (Tracing, Metrics, Structured Logging), Grafana / Aspire Dashboard, and RCA runbooks.
