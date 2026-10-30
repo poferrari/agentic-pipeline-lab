@@ -69,3 +69,4 @@ Before any feature, migration, or PR is approved, verify:
 - [ ] **Authorization & IDOR/BOLA**: Can an authenticated user access only their own data?
 - [ ] **Legal Basis (Base Legal)**: Is processing grounded on Art. 7 of LGPD (Consent, Contract Execution, or Legitimate Interest)?
 - [ ] **Technical Language**: All technical audit reports, compliance checklists, and code docstrings must be written in strict **English (EN-US)**.
+

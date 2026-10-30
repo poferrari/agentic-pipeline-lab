@@ -70,3 +70,4 @@ Provide transactional cascaded deletion or irreversible anonymization:
 4. [ ] **Data Minimization (Art. 6, III)**: Only attributes essential for feature delivery are stored in PostgreSQL.
 5. [ ] **Consent & Purpose (Art. 6, I)**: Clearly inform users why their data is processed.
 6. [ ] **Audit Logs**: Administrative or security-sensitive actions generate immutable audit events without logging the sensitive data itself.
+
