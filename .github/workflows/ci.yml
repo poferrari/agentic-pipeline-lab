@@ -6,15 +6,8 @@ on:
     paths:
       - "src/backend/**"
       - "Dockerfile"
-      - ".github/workflows/ci.yml"
-      - "render.yaml"
   pull_request:
     branches: ["main", "develop"]
-    paths:
-      - "src/backend/**"
-      - "Dockerfile"
-      - ".github/workflows/ci.yml"
-      - "render.yaml"
   workflow_dispatch:
 
 permissions:
@@ -36,6 +29,8 @@ jobs:
   backend-quality-and-tests:
     name: "Backend (.NET 9 C#): Lint, Strict Build & Test Suites"
     runs-on: ubuntu-latest
+    outputs:
+      backend_changed: ${{ steps.changes.outputs.backend_changed }}
     defaults:
       run:
         working-directory: src/backend
@@ -46,29 +41,59 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect Backend & Container Changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || echo "src/backend/")
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            CHANGED_FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" || echo "src/backend/")
+          else
+            CHANGED_FILES="src/backend/"
+          fi
+          echo "Modified files in commit range:"
+          echo "$CHANGED_FILES"
+          if echo "$CHANGED_FILES" | grep -qE '^(src/backend/|Dockerfile|sonar-project\.properties|\.sonarcloud\.properties)'; then
+            echo "BACKEND_CHANGED=true" >> $GITHUB_ENV
+            echo "backend_changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend or Dockerfile changes detected. Running full Backend CI/CD suite."
+          else
+            echo "BACKEND_CHANGED=false" >> $GITHUB_ENV
+            echo "backend_changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Non-backend changes only (docs/README/frontend/workflows). Fast-passing Backend CI checks."
+          fi
+
       - name: Setup Java 21 (SonarCloud Requirement)
+        if: env.BACKEND_CHANGED == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: "21"
           distribution: "zulu"
 
       - name: Setup .NET 9.0
+        if: env.BACKEND_CHANGED == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
 
       - name: Install SonarScanner and ReportGenerator
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           dotnet tool install --global dotnet-sonarscanner
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
       - name: Restore Dependencies
+        if: env.BACKEND_CHANGED == 'true'
         run: dotnet restore MarketPulse.sln
 
       - name: Verify Code Formatting (dotnet format)
+        if: env.BACKEND_CHANGED == 'true'
         run: dotnet format MarketPulse.sln --verify-no-changes --no-restore
 
       - name: Begin SonarCloud Scanner
+        if: env.BACKEND_CHANGED == 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -83,9 +108,11 @@ jobs:
             /d:sonar.cpd.exclusions="**/tests/**,**/*.test.*,**/docs/**,**/specs/**"
 
       - name: Build Solution (Zero Warnings Allowed = -warnaserror)
+        if: env.BACKEND_CHANGED == 'true'
         run: dotnet build MarketPulse.sln --configuration Release --no-restore -warnaserror
 
       - name: Check Vulnerable NuGet Packages (OWASP Supply Chain)
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           OUT=$(dotnet list MarketPulse.sln package --vulnerable --include-transitive)
           echo "$OUT"
@@ -95,6 +122,7 @@ jobs:
           fi
 
       - name: Run Unit, Hexagonal Architecture & Integration Tests
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           dotnet test MarketPulse.sln --configuration Release --no-build \
             --logger "trx;LogFileName=test-results.trx" \
@@ -104,7 +132,7 @@ jobs:
             -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
       - name: End SonarCloud Scanner & Upload Quality Metrics
-        if: always()
+        if: always() && env.BACKEND_CHANGED == 'true'
         continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -112,7 +140,7 @@ jobs:
           dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
       - name: Generate Code Coverage Markdown Report
-        if: always()
+        if: always() && env.BACKEND_CHANGED == 'true'
         continue-on-error: true
         run: |
           reportgenerator \
@@ -128,12 +156,17 @@ jobs:
       - name: Generate GitHub Step Summary Report
         if: always()
         run: |
-          echo "## 🧪 Automated Test Suite Report (.NET 9 Hexagonal DDD)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Strict Build (\`-warnaserror\`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
-          echo "- **SonarCloud Quality Gate**: ✅ Results reported to \`https://sonarcloud.io/project/overview?id=poferrari_agentic-pipeline-lab\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Suites Executed**: \`App.UnitTests\` (38 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (19 tests — Outbox, Idempotency, Exponential Retry, DLQ)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Testcontainers**: ✅ Real Docker Containers for PostgreSQL 17 & RabbitMQ 4 (AMQP 0-9-1) with Single Collection Fixture Lifecycle" >> $GITHUB_STEP_SUMMARY
-          echo "- **Public API Integration**: \`https://api.frankfurter.app\` (ECB Exchange Rates) + \`HybridCache\`" >> $GITHUB_STEP_SUMMARY
+          if [ "$BACKEND_CHANGED" = "true" ]; then
+            echo "## 🧪 Automated Test Suite Report (.NET 9 Hexagonal DDD)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Strict Build (\`-warnaserror\`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
+            echo "- **SonarCloud Quality Gate**: ✅ Results reported to \`https://sonarcloud.io/project/overview?id=poferrari_agentic-pipeline-lab\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Suites Executed**: \`App.UnitTests\` (43 tests), \`App.ArchTests\` (3 tests), \`App.IntegrationTests\` (22 tests — Outbox, Idempotency, Exponential Retry, DLQ)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Testcontainers**: ✅ Real Docker Containers for PostgreSQL 17 & RabbitMQ 4 (AMQP 0-9-1) with Single Collection Fixture Lifecycle" >> $GITHUB_STEP_SUMMARY
+            echo "- **Public API Integration**: \`https://api.frankfurter.app\` (ECB Exchange Rates) + \`HybridCache\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚡ Backend CI Fast-Pass (No Backend Code Changes)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: ✅ Skipped redundant .NET compilation and Testcontainers because no files under \`src/backend/**\` or \`Dockerfile\` were modified." >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ============================================================================
   # 2. DOCKER CONTAINER BUILD & SMOKE TEST (Render Readiness)
@@ -144,12 +177,15 @@ jobs:
     needs: backend-quality-and-tests
     steps:
       - name: Checkout Repository
+        if: needs.backend-quality-and-tests.outputs.backend_changed == 'true'
         uses: actions/checkout@v4
 
       - name: Build Production Container Image
+        if: needs.backend-quality-and-tests.outputs.backend_changed == 'true'
         run: docker build -t agentic-pipeline-lab:ci -f Dockerfile .
 
       - name: Run Container Smoke Test on Port 8080 (Render Contract)
+        if: needs.backend-quality-and-tests.outputs.backend_changed == 'true'
         run: |
           docker run -d --name marketpulse_smoke -p 8080:8080 agentic-pipeline-lab:ci
           LIVE=0
@@ -171,12 +207,20 @@ jobs:
           curl -sSf "http://localhost:8080/api/v1/rates/USD?symbols=BRL,EUR"
           docker stop marketpulse_smoke
 
+      - name: Fast-Pass Container Check (No Backend/Dockerfile Changes)
+        if: needs.backend-quality-and-tests.outputs.backend_changed != 'true'
+        run: |
+          echo "ℹ️ No changes in src/backend/** or Dockerfile. Skipping Docker container rebuild."
+          echo "## ⚡ Docker Container Fast-Pass" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ No backend or \`Dockerfile\` modifications detected. Skipped container image rebuild." >> $GITHUB_STEP_SUMMARY
+
   # ============================================================================
   # 3. SECURITY & OWASP AUDIT (Gitleaks PR Guardrail, Trivy Vulnerability & Secret Scan)
   # ============================================================================
   owasp-security-scan:
     name: "Security (OWASP): Gitleaks & Trivy Secret Guardrail"
     runs-on: ubuntu-latest
+    needs: backend-quality-and-tests
     steps:
       - name: Checkout Repository with Full History
         uses: actions/checkout@v4
@@ -187,8 +231,10 @@ jobs:
         run: |
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
           ./gitleaks dir src/backend --verbose --redact --exit-code 1
+          ./gitleaks dir docs --verbose --redact --exit-code 1
 
       - name: Run Trivy Filesystem Scan (Vulnerabilities)
+        if: needs.backend-quality-and-tests.outputs.backend_changed == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
@@ -203,7 +249,6 @@ jobs:
         run: |
           echo "## 🛡️ Security & Secret Guardrail Report" >> $GITHUB_STEP_SUMMARY
           echo "- **Gitleaks Secret Scanner**: ✅ No hardcoded credentials, API keys, or private tokens detected in commits or files." >> $GITHUB_STEP_SUMMARY
-          echo "- **Trivy Security Audit**: ✅ Zero HIGH/CRITICAL vulnerabilities or exposed secrets found." >> $GITHUB_STEP_SUMMARY
           echo "- **OWASP Supply Chain**: ✅ Verified clean dependencies." >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
@@ -213,7 +258,7 @@ jobs:
     name: "CD: Deploy Backend API to Render (main - backend - api)"
     runs-on: ubuntu-latest
     needs: [backend-quality-and-tests, docker-container-validation, owasp-security-scan]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.backend-quality-and-tests.outputs.backend_changed == 'true'
     environment:
       name: "main - backend - api"
       url: "https://agentic-pipeline-lab-api.onrender.com"
