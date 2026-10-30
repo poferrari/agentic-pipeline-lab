@@ -37,6 +37,12 @@ services:
         value: http/protobuf
       - key: OTEL_EXPORTER_OTLP_HEADERS
         sync: false
+      - key: Ai__ModelId
+        value: gemini-2.5-flash
+      - key: Ai__Endpoint
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: AI__ApiKey
+        sync: false
 
   - type: web
     name: agentic-pipeline-lab-web
