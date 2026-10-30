@@ -20,6 +20,7 @@ permissions:
   checks: write
   pull-requests: write
   security-events: write
+  deployments: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -78,7 +79,7 @@ jobs:
           echo "- **Strict Linting (\`next lint\`)**: ✅ 0 Warnings / 0 Errors" >> $GITHUB_STEP_SUMMARY
           echo "- **TypeScript Type Safety (\`tsc --noEmit\`)**: ✅ 100% Type-Safe (Zero \`any\`)" >> $GITHUB_STEP_SUMMARY
           echo "- **OWASP Supply Chain (\`npm audit\`)**: ✅ Zero HIGH/CRITICAL vulnerabilities in dependencies" >> $GITHUB_STEP_SUMMARY
-          echo "- **Automated Tests (\`Vitest\`)**: ✅ 9/9 Unit & Component tests passing" >> $GITHUB_STEP_SUMMARY
+          echo "- **Automated Tests (\`Vitest\`)**: ✅ 14/14 Unit & Component tests passing" >> $GITHUB_STEP_SUMMARY
           echo "- **Production Build**: ✅ Next.js 14 SSG & App Router prerendered successfully" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
@@ -115,3 +116,22 @@ jobs:
           echo "- **Gitleaks Secret Scanner**: ✅ No private tokens or credentials committed in frontend source" >> $GITHUB_STEP_SUMMARY
           echo "- **Trivy Filesystem Audit**: ✅ Zero HIGH/CRITICAL vulnerabilities or secret leaks detected" >> $GITHUB_STEP_SUMMARY
           echo "- **LGPD / Data Protection Gate**: ✅ Customer PII sanitization and tenant isolation verified" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # 3. CONTINUOUS DEPLOYMENT TO RENDER WEB SERVICE
+  # ============================================================================
+  deploy-frontend-to-render:
+    name: "CD: Deploy Frontend WebApp to Render (main - frontend - webapp)"
+    runs-on: ubuntu-latest
+    needs: [frontend-quality-and-tests, frontend-security-audit]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: "main - frontend - webapp"
+      url: "https://agentic-pipeline-lab-web.onrender.com"
+    steps:
+      - name: Register Frontend Deployment & Summary
+        run: |
+          echo "## 🚀 Frontend WebApp Deployment Registered" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: \`main - frontend - webapp\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target URL**: \`https://agentic-pipeline-lab-web.onrender.com\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Delivery Mechanism**: Render Native Git Auto-Deploy via \`render.yaml\`" >> $GITHUB_STEP_SUMMARY
