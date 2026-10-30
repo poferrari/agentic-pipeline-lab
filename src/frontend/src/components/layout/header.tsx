@@ -17,7 +17,7 @@ export function Header() {
           <Link
             href="/"
             className="flex items-center gap-2.5 transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg"
-            aria-label="Agentic FX Home"
+            aria-label="Agentic FX Live - Home"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20">
               <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />

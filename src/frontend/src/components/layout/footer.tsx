@@ -22,7 +22,7 @@ export function Footer() {
               Hexagonal Architecture, RabbitMQ MassTransit Outbox, Supabase Auth/Postgres, and Next.js 14 App Router.
             </p>
             <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+              <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
                 <CheckCircle2 className="h-4 w-4" /> WCAG 2.1 AA Accessible
               </span>
               <span>•</span>
