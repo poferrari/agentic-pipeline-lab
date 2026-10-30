@@ -14,7 +14,10 @@ export const watchlistKeys = {
   detail: (id: string) => [...watchlistKeys.all, 'detail', id] as const,
 };
 
-export function useWatchlist(params: WatchlistQueryParams = { page: 1, pageSize: 20 }) {
+export function useWatchlist(
+  params: WatchlistQueryParams = { page: 1, pageSize: 20 },
+  options: { enabled?: boolean } = { enabled: true }
+) {
   const query = new URLSearchParams();
   if (params.page !== undefined) query.set('page', params.page.toString());
   if (params.pageSize !== undefined) query.set('pageSize', params.pageSize.toString());
@@ -26,6 +29,7 @@ export function useWatchlist(params: WatchlistQueryParams = { page: 1, pageSize:
     queryKey: watchlistKeys.list(params),
     queryFn: () => apiFetch<PagedWatchlist>(`/api/v1/watchlist${queryString}`),
     staleTime: 30 * 1000,
+    enabled: options.enabled ?? true,
   });
 }
 

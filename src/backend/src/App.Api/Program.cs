@@ -203,7 +203,22 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("StrictCors", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(origin =>
+        {
+            if (string.IsNullOrWhiteSpace(origin))
+            {
+                return false;
+            }
+
+            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                       uri.Host.EndsWith(".onrender.com", StringComparison.OrdinalIgnoreCase) ||
+                       allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+            }
+
+            return false;
+        })
             .WithMethods("GET", "POST", "DELETE", "OPTIONS")
             .WithHeaders("Authorization", "Content-Type", HybridSupabaseOrDemoAuthHandler.DemoHeaderName, RequestTelemetryMiddleware.CorrelationIdHeader);
     });
@@ -211,11 +226,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseCors("StrictCors");
 app.UseExceptionHandler();
 app.UseMiddleware<RequestTelemetryMiddleware>();
 app.UseMiddleware<OriginShieldingMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
-app.UseCors("StrictCors");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

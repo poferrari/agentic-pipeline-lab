@@ -8,24 +8,33 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  isDemoMode: boolean;
+  isAuthenticated: boolean;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  resetDemoSession: () => void;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
+  isLoginModalOpen: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   isLoading: true,
-  isDemoMode: true,
+  isAuthenticated: false,
+  signInWithPassword: async () => ({ error: null }),
+  signInWithGoogle: async () => {},
   signOut: async () => {},
-  resetDemoSession: () => {},
+  openLoginModal: () => {},
+  closeLoginModal: () => {},
+  isLoginModalOpen: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -58,6 +67,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithPassword = async (email: string, password: string) => {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      setIsLoginModalOpen(false);
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error('Authentication failed') };
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    const supabase = getSupabaseBrowserClient();
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/`
+        : 'https://agentic-pipeline-lab-web.onrender.com/';
+
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+      },
+    });
+  };
+
   const signOut = async () => {
     try {
       const supabase = getSupabaseBrowserClient();
@@ -69,21 +114,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
-  const resetDemoSession = () => {
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
         isLoading,
-        isDemoMode: !session,
+        isAuthenticated: Boolean(user),
+        signInWithPassword,
+        signInWithGoogle,
         signOut,
-        resetDemoSession,
+        openLoginModal: () => setIsLoginModalOpen(true),
+        closeLoginModal: () => setIsLoginModalOpen(false),
+        isLoginModalOpen,
       }}
     >
       {children}

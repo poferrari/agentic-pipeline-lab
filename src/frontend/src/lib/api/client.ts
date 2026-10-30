@@ -20,7 +20,7 @@ export const apiClient = createClient<paths>({
 });
 
 /**
- * High-level fetch wrapper injecting Supabase Bearer JWT / Demo Header
+ * High-level fetch wrapper injecting Supabase Bearer JWT when authenticated
  * and parsing RFC 7807 ProblemDetails.
  */
 export async function apiFetch<TResponse>(
@@ -32,15 +32,15 @@ export async function apiFetch<TResponse>(
 
   try {
     const supabase = getSupabaseBrowserClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (session?.access_token) {
       headers.set('Authorization', `Bearer ${session.access_token}`);
-    } else {
-      // Graceful fallback to demo identity supported by backend Auth:AllowDemoHeader
-      headers.set('X-Demo-User-Id', 'demo-user-web');
     }
   } catch {
-    headers.set('X-Demo-User-Id', 'demo-user-web');
+    // Unauthenticated or Supabase client initialization failure
   }
 
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
@@ -69,4 +69,3 @@ export async function apiFetch<TResponse>(
 
   return (await response.json()) as TResponse;
 }
-

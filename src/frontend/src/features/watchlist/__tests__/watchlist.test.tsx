@@ -1,10 +1,20 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WatchlistManager } from '../components/watchlist-manager';
 
 const mockDelete = vi.fn();
+const mockOpenLoginModal = vi.fn();
+let mockIsAuthenticated = true;
+
+vi.mock('@/providers/auth-provider', () => ({
+  useAuth: vi.fn(() => ({
+    user: { id: 'test-user', email: 'test@example.com' },
+    isAuthenticated: mockIsAuthenticated,
+    openLoginModal: mockOpenLoginModal,
+  })),
+}));
 
 vi.mock('../api/use-watchlist', () => ({
   useWatchlist: vi.fn(() => ({
@@ -12,7 +22,7 @@ vi.mock('../api/use-watchlist', () => ({
       items: [
         {
           id: 'test-item-1',
-          userId: 'demo-user-web',
+          userId: 'test-user',
           baseCurrency: 'USD',
           targetCurrency: 'BRL',
           targetRate: 5.5,
@@ -46,6 +56,11 @@ vi.mock('../api/use-watchlist', () => ({
 }));
 
 describe('WatchlistManager Component', () => {
+  beforeEach(() => {
+    mockIsAuthenticated = true;
+    vi.clearAllMocks();
+  });
+
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -58,7 +73,7 @@ describe('WatchlistManager Component', () => {
     );
   };
 
-  it('renders watchlist title and active alerts', () => {
+  it('renders watchlist title and active alerts when authenticated', () => {
     renderWithProviders(<WatchlistManager />);
 
     expect(screen.getByRole('heading', { name: /Currency Watchlist Alerts/i })).toBeInTheDocument();
@@ -68,7 +83,7 @@ describe('WatchlistManager Component', () => {
     expect(screen.getByText('"Test alert notes"')).toBeInTheDocument();
   });
 
-  it('opens create alert modal on clicking New Alert button', () => {
+  it('opens create alert modal on clicking New Alert button when authenticated', () => {
     renderWithProviders(<WatchlistManager />);
 
     const newAlertBtn = screen.getByRole('button', { name: /Create new currency alert/i });
@@ -77,5 +92,12 @@ describe('WatchlistManager Component', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Create Currency Watch Alert')).toBeInTheDocument();
   });
-});
 
+  it('renders access control notice when unauthenticated', () => {
+    mockIsAuthenticated = false;
+    renderWithProviders(<WatchlistManager />);
+
+    expect(screen.getByText(/Access Control: Authentication Required/i)).toBeInTheDocument();
+    expect(screen.getByText(/The Watchlist route stores personal thresholds isolated by Supabase User tenancy/i)).toBeInTheDocument();
+  });
+});
