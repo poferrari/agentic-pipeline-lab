@@ -158,7 +158,7 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-var supabaseUrl = builder.Configuration["Supabase:Url"] ?? "https://example-project.supabase.co";
+var supabaseUrl = builder.Configuration["Supabase:Url"] ?? string.Empty;
 builder.Services
     .AddAuthentication(options =>
     {
@@ -197,7 +197,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? ["http://localhost:3000"];
+    ?? [];
 
 builder.Services.AddCors(options =>
 {
@@ -253,7 +253,7 @@ app.MapGet("/", () => TypedResults.Ok(new
             wireIn = "ICurrencyAlertConsumerContract (Loose Schema)"
         }
     },
-    publicApiProvider = "Frankfurter ECB Exchange Rates API (https://api.frankfurter.app)",
+    publicApiProvider = "Frankfurter ECB Exchange Rates API",
     observability = new
     {
         telemetry = "OpenTelemetry (Tracing, Metrics & Structured Logging)",
