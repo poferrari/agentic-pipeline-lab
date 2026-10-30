@@ -39,7 +39,7 @@ export function ArchitectureOverview() {
           </div>
 
           <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
+            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-semibold text-sm">
               <ShieldCheck className="h-4 w-4" />
               <span>Supabase Auth &amp; RLS</span>
             </div>

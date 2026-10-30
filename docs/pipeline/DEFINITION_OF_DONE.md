@@ -48,3 +48,10 @@ No Task, Feature, or Pull Request is considered **Done** without **100% of appli
 - [ ] **Safe Migrations**: If database changes occurred, the EF Core migration was generated, reviewed, and tested (up and down).
 - [ ] **Mandatory Technical Language Standard (EN-US)**: All source code, class/method names, comments, structured logs, test names, semantic commits, and PR descriptions are 100% in technical English (EN-US).
 - [ ] **Comprehensive Pull Request Report**: The PR description follows the template from `pr-delivery-automation` (Executive Summary, Architectural Decisions, Executed Test Evidence, OWASP Checklist, and Deployment/Rollback Instructions).
+
+## 6. User Experience (UX), Usability & Accessibility Gate
+- [ ] **The 4 Data States Implemented**: Every async component provides seamless structural skeleton loaders (`animate-pulse`), helpful empty states with a primary CTA, empathetic error messages with a 1-click retry action, and clean data views.
+- [ ] **Perceived Performance & Layout Stability**: Interactive actions provide immediate visual feedback (optimistic UI or loading indicators) with zero layout shifting (Cumulative Layout Shift `CLS = 0.000`).
+- [ ] **UX Writing & ProblemDetails Translation**: No raw HTTP status codes or stack traces are displayed to end users; API errors (RFC 7807) are translated into actionable, empathetic guidance.
+- [ ] **Keyboard Navigability & Focus Management**: Overlays, dialogs, and drawers trap focus, close cleanly via `Escape`, return focus to the trigger element, and support full `Tab` / `Shift+Tab` / `Enter` navigation.
+- [ ] **WCAG 2.1 AA & WCAG 2.5.3 Compliance**: Color contrast ratio exceeds 4.5:1 (5.5:1+ for dark mode), button `aria-label` starts with the visible button text (*Label in Name*), and dynamic tickers use `aria-live="polite"`.
