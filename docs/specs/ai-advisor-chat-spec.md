@@ -54,3 +54,4 @@ Strict **System Guardrails** restrict the AI exclusively to the MarketPulse MVP 
   "generatedAtUtc": "2026-10-30T02:40:00Z"
 }
 ```
+

@@ -31,3 +31,4 @@ public sealed class AiAdvisorEndpoints : IEndpoint
         .ProducesProblem(StatusCodes.Status429TooManyRequests);
     }
 }
+

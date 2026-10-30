@@ -31,3 +31,4 @@
 ### Phase 5: Verification & Deployment
 - [ ] **Task 5.1 (CI/CD Verification)**: Run full backend and frontend validation suites (`dotnet test`, `npm run lint`, `npm run test`, `npm run build`).
 - [ ] **Task 5.2 (E2E & Live Test)**: Verify in browser with test queries (in-scope vs off-topic query).
+

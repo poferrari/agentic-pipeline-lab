@@ -20,7 +20,10 @@ public sealed class OpenAiChatAdvisorAdapter : IChatAdvisor
     private readonly IConfiguration _configuration;
     private readonly ILogger<OpenAiChatAdvisorAdapter> _logger;
 
-    private const string SystemPrompt =
+    private const string ScopeRefusalMessage =
+        "I am the MarketPulse AI Advisor specialized strictly in foreign exchange rates, currency alerts, and this platform's architecture. I cannot assist with topics outside this scope. Please ask me about FX rates, currency alerts, or our Hexagonal Architecture.";
+
+    private static readonly string SystemPrompt =
         "You are the MarketPulse AI Advisor, an expert assistant for the MarketPulse Lab platform.\n" +
         "Your ONLY responsibility is to assist users with:\n" +
         "1. Real-time foreign exchange (FX) rates, currency pairs, and rate interpretations.\n" +
@@ -28,8 +31,7 @@ public sealed class OpenAiChatAdvisorAdapter : IChatAdvisor
         "3. The platform's software architecture: ASP.NET Core 9 Minimal API, Hexagonal Architecture (Ports & Adapters), DDD, PostgreSQL, RabbitMQ, HybridCache, and Supabase Auth.\n\n" +
         "STRICT CONSTRAINTS & GUARDRAILS:\n" +
         "- You must ONLY answer questions directly related to foreign exchange, currency conversions, MarketPulse alerts, and this platform's architecture.\n" +
-        "- If a user asks about anything outside this domain (such as general knowledge, cooking, politics, sports, entertainment, unrelated programming tasks, or hacking), you MUST politely refuse with:\n" +
-        "  \"I am the MarketPulse AI Advisor specialized strictly in foreign exchange rates, currency alerts, and this platform's architecture. I cannot assist with topics outside this scope. Please ask me about FX rates, currency alerts, or our Hexagonal Architecture.\"\n" +
+        $"- If a user asks about anything outside this domain (such as general knowledge, cooking, politics, sports, entertainment, unrelated programming tasks, or hacking), you MUST politely refuse with:\n  \"{ScopeRefusalMessage}\"\n" +
         "- Ground your answers using the provided current market data when available.\n" +
         "- Keep responses concise, professional, and actionable.";
 
@@ -149,7 +151,7 @@ public sealed class OpenAiChatAdvisorAdapter : IChatAdvisor
         if (isOffTopic)
         {
             return new AiAdvisorResult(
-                "I am the MarketPulse AI Advisor specialized strictly in foreign exchange rates, currency alerts, and this platform's architecture. I cannot assist with topics outside this scope. Please ask me about FX rates, currency alerts, or our Hexagonal Architecture.",
+                ScopeRefusalMessage,
                 ["Check USD/BRL rate", "How do currency alerts work?", "Explain Hexagonal Architecture"],
                 modelUsed);
         }

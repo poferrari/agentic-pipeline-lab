@@ -14,3 +14,4 @@ export interface AiAdvisorResponse {
   modelUsed: string;
   generatedAtUtc: string;
 }
+

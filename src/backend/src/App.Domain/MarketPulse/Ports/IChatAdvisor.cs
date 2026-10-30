@@ -21,3 +21,4 @@ public interface IChatAdvisor
         string contextualMarketData,
         CancellationToken cancellationToken = default);
 }
+
