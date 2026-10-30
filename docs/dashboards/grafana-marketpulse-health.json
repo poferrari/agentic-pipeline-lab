@@ -339,13 +339,126 @@
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "editorMode": "code",
-          "expr": "sum(increase(http_server_request_duration_seconds_count[1m])) by (http_response_status_code)",
-          "legendFormat": "HTTP {{http_response_status_code}}",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"$status_code\"}[1m])) by (http_route, http_response_status_code)",
+          "legendFormat": "{{http_route}} [HTTP {{http_response_status_code}}]",
           "refId": "A"
         }
       ],
-      "title": "HTTP Status Code Distribution (2xx, 4xx, 5xx)",
+      "title": "HTTP Status Code Distribution by Route & Status",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": { "mode": "normal" }
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "id": 22,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"4..\", http_response_status_code=~\"$status_code\"}[1m])) by (http_route, http_response_status_code)",
+          "legendFormat": "4xx [HTTP {{http_response_status_code}}] {{http_route}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"5..\", http_response_status_code=~\"$status_code\"}[1m])) by (http_route, http_response_status_code)",
+          "legendFormat": "5xx [HTTP {{http_response_status_code}}] {{http_route}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Errors & Faults by Route (4xx / 5xx)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
+      "id": 23,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{http_route=~\"$route\"}[5m])) by (http_route, http_request_method)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Throughput",
+          "refId": "Throughput"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"2..\"}[5m])) by (http_route, http_request_method)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "2xx Success",
+          "refId": "Success2xx"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"4..\"}[5m])) by (http_route, http_request_method)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "4xx Errors",
+          "refId": "Errors4xx"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "sum(increase(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"5..\"}[5m])) by (http_route, http_request_method)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "5xx Faults",
+          "refId": "Faults5xx"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "(sum(rate(http_server_request_duration_seconds_count{http_route=~\"$route\", http_response_status_code=~\"[45]..\"}[5m])) by (http_route, http_request_method) / sum(rate(http_server_request_duration_seconds_count{http_route=~\"$route\"}[5m])) by (http_route, http_request_method)) * 100",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Error Rate (%)",
+          "refId": "ErrorRatePct"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket{http_route=~\"$route\"}[5m])) by (le, http_route, http_request_method))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "P95 Latency",
+          "refId": "P95Latency"
+        }
+      ],
+      "title": "HTTP Route Health & Status Breakdown",
+      "type": "table"
     },
     {
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
@@ -358,7 +471,7 @@
           "unit": "short"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 31 },
       "id": 21,
       "targets": [
         {
@@ -574,6 +687,66 @@
   "refresh": "5s",
   "schemaVersion": 39,
   "tags": ["marketpulse", "sre", "opentelemetry", "golden-signals", "health"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "grafanacloud-prom"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count, http_route)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Route",
+        "multi": true,
+        "name": "route",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(http_server_request_duration_seconds_count, http_route)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "grafanacloud-prom"
+        },
+        "definition": "label_values(http_server_request_duration_seconds_count, http_response_status_code)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Status Code",
+        "multi": true,
+        "name": "status_code",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(http_server_request_duration_seconds_count, http_response_status_code)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
   "time": {
     "from": "now-1h",
     "to": "now"
