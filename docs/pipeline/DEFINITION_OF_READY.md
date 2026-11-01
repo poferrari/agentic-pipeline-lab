@@ -12,9 +12,12 @@ The purpose of the **DoR** is to eliminate rework, ambiguity, and guesswork duri
 - [ ] **Resolved Open Questions**: No open functional questions remain (`[OPEN QUESTION]` = 0). If an engineering default was assumed, it is documented as a Validated Assumption or ADR.
 - [ ] **Acceptance Criteria (BDD / Gherkin)**: Every requirement has explicit scenarios in `Given / When / Then` format, including error cases.
 
-## 2. Architecture and Domain Modeling (DDD + Hexagonal + Event-Driven)
+## 2. Architecture, Domain Modeling & Uncle Bob Rigor (DDD + Hexagonal + EDA)
 - [ ] **Ubiquitous Language**: Domain concepts (Entities, Aggregates, Value Objects, Events) are named consistently without conflicting synonyms.
-- [ ] **Domain Invariants**: Business invariants protected by the Aggregate Root are explicit (e.g. "A paid order cannot have items removed").
+- [ ] **Domain Invariants & Illegal States Impossible**:
+  - Domain types are designed so that **illegal states are impossible to represent** (e.g. `readonly record struct`, factory methods with Result return).
+  - Business invariants protected by the Aggregate Root are explicit (e.g. "A paid order cannot have items removed").
+- [ ] **Boundary Discipline (Parse, Don't Validate)**: External data is parsed once at the boundary (DTO -> Domain Value Object); core business logic lives in pure, side-effect-free functions.
 - [ ] **Inbound & Outbound Ports (Hexagonal)**:
   - Which Commands/Queries in the `Application` layer will be implemented?
   - Which outbound ports (`IRepository`, `ICache`, `IMessageBus`) will be invoked?
@@ -41,10 +44,11 @@ The purpose of the **DoR** is to eliminate rework, ambiguity, and guesswork duri
 - [ ] **MVP Cost Alignment**: The solution utilizes free-tier or open-source stack capabilities without introducing unnecessary paid services.
 
 ## 5. Test Plan and Atomic Task Decomposition
-- [ ] **Mapped Test Plan**:
-  - List of unit tests (`Domain` invariants and `Application` handlers/validators) to be written.
+- [ ] **Mapped Test Plan & Behavioral Testing**:
+  - List of unit tests (`Domain` invariants and `Application` handlers/validators) to be written using strict TDD.
   - List of integration tests (`Api` + `PostgreSQL` + `RabbitMQ` / `MSW` for frontend) to be written.
-- [ ] **Atomic and Independent Tasks**: Work is broken into small, sequential tasks with clear file boundaries and verification commands.
+  - Tests designed to verify observable behavior rather than mock implementation details.
+- [ ] **Atomic and Independent Tasks**: Work is broken into small, sequential tasks with clear file boundaries, verifiable units, and verification commands.
 - [ ] **Mandatory Technical Language Standard (EN-US)**: The technical specification (`docs/specs/`), user stories, acceptance criteria, ubiquitous language terms, and task descriptions are strictly written in technical English (EN-US).
 
 ## 6. User Experience (UX), Usability & Accessibility Planning
