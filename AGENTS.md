@@ -12,16 +12,24 @@ Any project structure or context provided in this workspace must be processed st
 2. **Clean Code & Readability**:
    - Code is read much more often than written. Variable, method, and class names must reveal clear intent in strict technical English (EN-US).
    - Short methods (ideally < 20 lines), Single Responsibility (SRP/SOLID), early-returns (Guard Clauses) instead of nested `if/else` blocks.
-3. **Zero Ambiguity & Proactivity**:
+3. **Uncle Bob Disciplines (`ub-mode`)**:
+   - **First Make It Work, Then Make It Right, Follow Practice**:
+     - *Subtract Before You Add*: Eliminate dead code and simplify existing structures before adding new classes or abstractions.
+     - *Root Causes Over Crash Guards*: **A guard that only hides the crash is NOT a fix**. Prohibit superficial `if (x != null)` or blank `try/catch` blocks that merely silence symptom crashes; fix where the illegal state originated.
+     - *Attack the Premise*: If two fixes based on the same premise fail the same test gate, stop immediately, state the premise in one sentence, eliminate the flawed assumption, and rethink from first principles.
+     - *Deterministic Quality Gates*: Keep every function under **CRAP < 10** (low complexity or high behavioral test coverage) and eliminate structural code duplication (**Dryer < 0.8**).
+     - *Anti-Coverage Theater (Mutator)*: Tests must test observable behavior, not implementation or mock calls. If tests still pass when every method returns `default`/empty, the tests are invalid. Verify resilience against mutation testing (e.g. Stryker.NET).
+     - *Model Domain to Make Illegal States Impossible*: Design domain types so that invalid states cannot compile or instantiate.
+4. **Zero Ambiguity & Proactivity**:
    - **NEVER** write code based on unvalidated assumptions or ambiguous requirements.
    - During planning and analysis, raise **all Open Questions**, anticipate edge cases, network failures, concurrency, quota limits, and security vulnerabilities before writing code.
-4. **Minimum Cost for MVP and Scale (Buy/Delegate over Build)**:
+5. **Minimum Cost for MVP and Scale (Buy/Delegate over Build)**:
    - Delegate commodities to market-validated services with generous Free Tiers:
      - **AuthN / AuthZ**: **Supabase Auth** (asymmetric JWKS JWT validation in backend C# and native SDK in frontend). Never implement password tables or custom OAuth/MFA flows from scratch.
      - **Database**: **PostgreSQL** (via Supabase or Neon/local Docker) with Row-Level Security (RLS) or strict application-level isolation.
      - **Messaging**: **RabbitMQ** (CloudAMQP free tier or local container).
      - **Cache**: `HybridCache` (.NET 9+) combining `IMemoryCache` (free L1 in-memory) and Redis/Upstash or Postgres (optional L2 when required).
-5. **Mandatory Technical Language Standard (English EN-US)**:
+6. **Mandatory Technical Language Standard (English EN-US)**:
    - **ALL artifacts generated or maintained in the repository MUST be strictly in ENGLISH (EN-US)**:
      - Source code (project names, namespaces, classes, methods, records, enums, properties, variables).
      - Code comments and docstrings.
@@ -69,19 +77,20 @@ All development must respect the **Quality Gates** below. No agent may skip phas
 - List all blocking **Open Questions**. If critical ambiguity exists, interview the user before proceeding or document the default architectural decision (ADR).
 
 ### Gate 2: Architecture, Technical Spec, and Tasks (`domain-architect-planner`)
-- Model **Bounded Contexts**, **Aggregates**, **Value Objects**, **Domain Events**, and **Integration Events (RabbitMQ)**.
+- Model **Bounded Contexts**, **Aggregates**, **Value Objects**, **Domain Events**, and **Integration Events (RabbitMQ)** so illegal states are impossible to represent.
 - Define REST contracts (routes, payloads, status codes, idempotency keys) and PostgreSQL database schemas (indexes, constraints).
 - Decompose work into **Atomic Tasks** ordered by dependency.
 - Validate the **Definition of Ready (DoR)** (see `docs/pipeline/DEFINITION_OF_READY.md`). No task proceeds to coding without meeting 100% of DoR.
 
 ### Gate 3: Test-Driven Implementation (`backend-csharp-developer` & `frontend-web-developer`)
-- Implement strictly following the Spec and Hexagonal Architecture.
+- Implement strictly following the Spec, Hexagonal Architecture, and **Uncle Bob disciplines (`ub-mode`)**.
 - **Mandatory Automated Tests**:
-  - **Backend (.NET)**: `xUnit` + `FluentAssertions` + `NSubstitute` (Unit tests for Domain/Application) + `Testcontainers` (`PostgreSql`, `RabbitMq`) and `WebApplicationFactory` (Real API and messaging integration tests).
+  - **Backend (.NET)**: `xUnit` + `FluentAssertions` + `NSubstitute` (Unit tests for Domain/Application) + `Testcontainers` (`PostgreSql`, `RabbitMq`) and `WebApplicationFactory` (Real API and messaging integration tests) + Mutation Testing (Stryker.NET).
   - **Frontend (TS)**: `Vitest` + `React Testing Library` + `MSW (Mock Service Worker)` (Unit/Integration tests for components and API hooks) + `Playwright` (Critical E2E flows).
 
 ### Gate 4: Quality Audit, OWASP Security, and PR (`qa-security-reviewer` & `devops-ci-engineer`)
 - Validate against **OWASP Top 10** and **OWASP API Security Top 10** (BOLA/IDOR, Broken Auth, Mass Assignment, Injection, Rate Limiting, Secrets Exposure).
+- Validate against **Uncle Bob Deterministic Quality Gates**: CRAP < 10, Dryer < 0.8, Mutation Testing, and Zero superficial crash guards.
 - Run Linters and Formatters (`dotnet format`, Roslyn Analyzers, `eslint`, `tsc --noEmit`).
 - Validate the **Definition of Done (DoD)** (see `docs/pipeline/DEFINITION_OF_DONE.md`).
 - Generate a comprehensive Pull Request report containing: Executive Summary, Architecture/Decisions, Test Execution Evidence, OWASP Checklist, and Rollback Guide.
@@ -96,12 +105,13 @@ Consult and engage the resources below according to the pipeline phase:
   - `pipeline-orchestrator`: Pipeline conductor (coordinates Discovery to PR).
   - `product-requirements-analyst`: Specialist in Discovery, FR/NFR, Open Questions, Failure Modes, and DoR.
   - `domain-architect-planner`: DDD, Hexagonal Architecture, EDA (RabbitMQ), PostgreSQL, REST API, and Task decomposition architect.
-  - `backend-csharp-developer`: C# .NET Minimal API, DDD, EF Core, MassTransit/RabbitMQ, Cache, and xUnit/Testcontainers senior engineer.
-  - `frontend-web-developer`: React/Next.js, TypeScript, TanStack Query, Zod, Supabase Auth, and Vitest/Playwright senior engineer.
-  - `qa-security-reviewer`: Quality auditor enforcing Clean Code, KISS, Testing, OWASP API Top 10, and PR reviews.
+  - `backend-csharp-developer`: C# .NET Minimal API, DDD, EF Core, MassTransit/RabbitMQ, Cache, ub-mode, and xUnit/Testcontainers senior engineer.
+  - `frontend-web-developer`: React/Next.js, TypeScript, TanStack Query, Zod, Supabase Auth, ub-mode, and Vitest/Playwright senior engineer.
+  - `qa-security-reviewer`: Quality auditor enforcing Clean Code, KISS, ub-mode quality gates (CRAP < 10, Dryer, Mutator), Testing, OWASP API Top 10, and PR reviews.
   - `devops-ci-engineer`: Platform engineer for GitHub Actions (CI/CD), Docker, quality automation, and FinOps cost controls.
   - `legal-compliance-privacy-officer`: Legal, Brazilian LGPD (Lei 13.709/2018), GDPR, and sensitive customer data protection officer.
 - **Operational Skills (`.agents/skills/`)**:
+  - `ub-mode`: Uncle Bob Martin's reduced principles (First Make It Work, Then Make It Right, Follow Practice, CRAP < 10, Dryer < 0.8, Mutation testing, Root Causes over crash guards).
   - `discovery-and-spec`: Transforming an idea or workspace into a full technical Spec, FR/NFR, ADRs, and atomic Tasks without ambiguity.
   - `csharp-hexagonal-ddd`: Code recipes and standards for C# Minimal API, Hexagonal Architecture, Result Pattern, RabbitMQ Outbox, Cache, and Supabase Auth.
   - `frontend-api-architecture`: Modern frontend architecture for consuming REST APIs, TanStack Query, OpenAPI codegen, and MSW/Vitest testing.

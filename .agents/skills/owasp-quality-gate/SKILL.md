@@ -3,12 +3,13 @@ name: owasp-quality-gate
 description: >-
   Use this skill prior to completing any implementation or during code review to audit
   security (OWASP Top 10 and OWASP API Security Top 10), Clean Code, KISS, Hexagonal Architecture,
+  Uncle Bob disciplines (ub-mode: CRAP < 10, Dryer < 0.8, Mutation Testing, Root Cause verification),
   test coverage, and validate the Definition of Done (DoD).
 ---
 
-# Quality Audit and OWASP Security Gate (`owasp-quality-gate`)
+# Quality Audit, OWASP Security & Uncle Bob Quality Gate (`owasp-quality-gate`)
 
-This skill acts as the **Automated Quality Gate** of the pipeline. Execute all checks below before opening or approving any Pull Request.
+This skill acts as the **Automated Quality & Security Gate** of the pipeline. Execute all checks below before opening or approving any Pull Request.
 
 ---
 
@@ -29,12 +30,23 @@ This skill acts as the **Automated Quality Gate** of the pipeline. Execute all c
 
 ---
 
-## 2. Clean Code, KISS, and Hexagonal Architecture Checklist
+## 2. Uncle Bob Mode Quality Gate (`ub-mode`) & Clean Code
 
-1. **Zero Prohibited Dependencies**: `App.Domain` has zero infrastructure `using` statements.
-2. **No Exceptions for Business Flow**: Handlers return explicit `Result<T>` values.
-3. **No Tracked Secrets in Git**: Verify with `git status` and `git diff` that no `.env` file, database credentials, or private keys are staged.
-4. **Secure and Performant Queries**: Zero string concatenation in SQL (complete SQL Injection prevention via parameterized EF Core / Dapper), and mandatory `.AsNoTracking()` on read queries.
+1. **Root Cause Fixes Over Crash Guards**:
+   - Prohibit superficial `if (x != null)` or blank `try/catch` handlers that only mask symptom exceptions.
+   - Any bug fix must include an automated regression test and address where the illegal state was introduced.
+2. **Subtract Before You Add**:
+   - Check if new features or bug fixes can be solved by eliminating dead code or simplifying existing structures before adding new layers or classes.
+3. **Deterministic Complexity Threshold (CRAP < 10)**:
+   - Ensure cyclomatic complexity is low ($\le 6$) and behavioral unit test coverage is high ($\ge 85\%$) so that no method exceeds **CRAP 10**.
+4. **Structural Duplication Elimination (Dryer $\ge 0.8$)**:
+   - Reject any PR that duplicates algorithmic logic with similarity $\ge 0.8$. Extract shared domain logic into cohesive value objects or domain services.
+5. **Mutation Testing & Behavioral Assertions (Mutator)**:
+   - Reject hollow tests: *“If the test passes when every function returns default or null, throw it out.”*
+   - Verify that modifying condition boundaries (`>` to `<=`, `==` to `!=`) causes tests to fail (Mutation Score > 75%).
+6. **Zero Prohibited Dependencies**: `App.Domain` has zero infrastructure `using` statements.
+7. **No Exceptions for Business Flow**: Handlers return explicit `Result<T>` values mapped to RFC 7807 `ProblemDetails`.
+8. **No Tracked Secrets in Git**: Verify with `git status` and `git diff` that no `.env` file, database credentials, or private keys are staged.
 
 ---
 

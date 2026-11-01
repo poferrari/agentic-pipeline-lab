@@ -4,22 +4,30 @@ No Task, Feature, or Pull Request is considered **Done** without **100% of appli
 
 ---
 
-## 1. Code Quality and Architecture (KISS, Clean Code, Hexagonal)
+## 1. Code Quality, Architecture and Uncle Bob Disciplines (ub-mode)
 - [ ] **Hexagonal Isolation & DDD**:
   - The `Domain` layer has zero dependencies on infrastructure packages (`Microsoft.EntityFrameworkCore`, `MassTransit`, `AspNetCore`, etc.).
   - Entities and Aggregates protect their invariants (private constructors/factory methods, collections exposed as `IReadOnlyCollection<T>`).
   - Business errors utilize the **Result Pattern** (`Result<T>`) and return standardized `ProblemDetails` (RFC 7807) in the Minimal API; no exceptions are thrown for expected business validation flow.
-- [ ] **KISS & Clean Code**:
+  - Model types so that illegal states are impossible to represent in memory or persistence.
+- [ ] **KISS, Clean Code & Uncle Bob Rigor**:
   - Zero dead code, commented-out blocks, unassigned `TODO` comments, or stray `Console.WriteLine` / `console.log` statements.
-  - Cohesive methods, expressive naming, zero accidental duplication.
+  - **Subtract Before You Add**: Complexity removed before adding new abstractions.
+  - **Root Cause Fixes Over Crash Guards**: No superficial `if (x != null)` or blank `try/catch` blocks that merely silence symptom crashes. Fix where the illegal state originated.
+  - **Deterministic CRAP Threshold**: Every function/method maintains **$\text{CRAP} < 10$** (low cyclomatic complexity or high behavioral test coverage).
+  - **Duplication Threshold (Dryer)**: Zero structural code duplication with similarity $\ge 0.8$.
 - [ ] **Zero Compilation and Linter Warnings**:
   - Backend: `dotnet build --configuration Release -warnaserror` and `dotnet format --verify-no-changes` pass with **0 errors and 0 warnings**.
   - Frontend: `npm run lint`, `npm run typecheck` (`tsc --noEmit`), and `npm run build` pass with **0 errors and 0 warnings**.
 
-## 2. Automated Testing (Unit, Integration, and Contract)
+## 2. Automated Testing (Behavioral, Mutation & Contract)
+- [ ] **Behavioral Testing & Anti-Coverage Theater (Mutator)**:
+  - Tests verify observable business behavior, never implementation details or mock call counts.
+  - **Empty Return Rule**: If tests still pass when every method returns `default`/empty, the test is invalid.
+  - Test suites are resilient against mutation testing (e.g. Stryker.NET / Stryker-js): conditional flips (`>` to `<=`, `&&` to `||`) are detected and killed by assertions.
 - [ ] **Unit Tests (Backend & Frontend)**:
   - All unit tests pass (`dotnet test --filter Category=Unit` and `npm run test:unit`).
-  - Domain rules, Value Objects, Command/Query Handlers, and Validators maintain >= 85% coverage on new modules.
+  - Domain rules, Value Objects, Command/Query Handlers, and Validators maintain >= 85% meaningful coverage on new modules.
 - [ ] **Integration Tests**:
   - Backend: Minimal API endpoints, PostgreSQL persistence, and RabbitMQ message publish/consume flows are verified via `WebApplicationFactory` + `Testcontainers` (or isolated test environment).
   - Frontend: Components, views, and `TanStack Query` hooks are tested using `Vitest` + `React Testing Library` + `MSW` covering `isLoading`, `isSuccess`, `isEmpty`, and `isError` states.
