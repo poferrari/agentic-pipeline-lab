@@ -12,7 +12,7 @@ export const watchItemSchema = z.object({
     .max(3, 'Target currency must be 3 characters (e.g. BRL)')
     .regex(/^[A-Z]{3}$/, 'Must be 3 uppercase letters (e.g. BRL, EUR, USD)'),
   targetRate: z
-    .number({ invalid_type_error: 'Target rate must be a valid number' })
+    .number({ error: 'Target rate must be a valid number' })
     .positive('Target rate must be greater than zero'),
   notifyWhenAbove: z.boolean().default(true),
   notes: z.string().max(250, 'Notes cannot exceed 250 characters').nullable().optional(),
@@ -21,5 +21,7 @@ export const watchItemSchema = z.object({
   path: ['targetCurrency'],
 });
 
-export type WatchItemFormData = z.infer<typeof watchItemSchema>;
+// Zod 4 separates input (before defaults) from output (after defaults and transforms).
+export type WatchItemFormInput = z.input<typeof watchItemSchema>;
+export type WatchItemFormData = z.output<typeof watchItemSchema>;
 

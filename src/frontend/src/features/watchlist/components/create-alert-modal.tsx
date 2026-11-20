@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { watchItemSchema, type WatchItemFormData } from '../schemas/watch-item-schema';
+import { watchItemSchema, type WatchItemFormData, type WatchItemFormInput } from '../schemas/watch-item-schema';
 import { useCreateWatchItem } from '../api/use-watchlist';
 import { X, BellPlus, Loader2, AlertCircle } from 'lucide-react';
 
@@ -21,7 +21,7 @@ export function CreateAlertModal({ isOpen, onClose, defaultBase = 'USD' }: Creat
     handleSubmit,
     reset: resetForm,
     formState: { errors },
-  } = useForm<WatchItemFormData>({
+  } = useForm<WatchItemFormInput, unknown, WatchItemFormData>({
     resolver: zodResolver(watchItemSchema),
     defaultValues: {
       baseCurrency: defaultBase,

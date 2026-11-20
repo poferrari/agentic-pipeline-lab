@@ -58,5 +58,27 @@ describe('watchItemSchema validation', () => {
     const result = watchItemSchema.safeParse(input);
     expect(result.success).toBe(false);
   });
+  it('should report a friendly message when targetRate is not a number', () => {
+    const result = watchItemSchema.safeParse({
+      baseCurrency: 'USD',
+      targetCurrency: 'BRL',
+      targetRate: 'abc',
+      notifyWhenAbove: true,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('Target rate must be a valid number');
+    }
+  });
+
+  it('should default notifyWhenAbove to true when omitted', () => {
+    const result = watchItemSchema.safeParse({ baseCurrency: 'USD', targetCurrency: 'BRL', targetRate: 5 });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.notifyWhenAbove).toBe(true);
+    }
+  });
 });
 
