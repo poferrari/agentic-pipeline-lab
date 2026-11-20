@@ -6,12 +6,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import dynamic from 'next/dynamic';
-
-const AiChatDrawer = dynamic(
-  () => import('@/features/ai/components/ai-chat-drawer').then((mod) => mod.AiChatDrawer),
-  { ssr: false }
-);
+import { AiChatDrawerLazy } from '@/features/ai/components/ai-chat-drawer-lazy';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,7 +23,7 @@ export const metadata: Metadata = {
     template: '%s | Agentic FX',
   },
   description:
-    'High-performance foreign exchange rates and automated threshold alerts powered by C# Minimal API (.NET 9), Hexagonal Architecture, RabbitMQ MassTransit Outbox, and Next.js 14.',
+    'High-performance foreign exchange rates and automated threshold alerts powered by C# Minimal API (.NET 9), Hexagonal Architecture, RabbitMQ MassTransit Outbox, and Next.js 16.',
   keywords: [
     'Exchange Rates',
     'Forex',
@@ -39,7 +34,7 @@ export const metadata: Metadata = {
     'RabbitMQ',
     'Outbox Pattern',
     'C# Minimal API',
-    'Next.js 14',
+    'Next.js 16',
     'Supabase Auth',
   ],
   authors: [{ name: 'Agentic Enterprise Pipeline Team' }],
@@ -100,7 +95,7 @@ export default function RootLayout({
             <main className="flex-1 w-full" id="main-content">
               {children}
             </main>
-            <AiChatDrawer />
+            <AiChatDrawerLazy />
             <Footer />
           </AuthProvider>
         </QueryProvider>

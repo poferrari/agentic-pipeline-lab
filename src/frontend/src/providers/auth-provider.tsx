@@ -37,34 +37,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
-    try {
-      const supabase = getSupabaseBrowserClient();
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
-      supabase.auth
-        .getSession()
-        .then(({ data: { session: initialSession } }) => {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          setIsLoading(false);
-        })
-        .catch(() => {
+    const initialize = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
           setIsLoading(false);
         });
+        unsubscribe = () => subscription.unsubscribe();
 
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        setIsLoading(false);
-      });
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
+        if (!cancelled) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+        }
+      } catch {
+        // Supabase is not configured or unreachable: stay signed out instead of loading forever.
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
 
-      return () => {
-        subscription.unsubscribe();
-      };
-    } catch {
-      setIsLoading(false);
-    }
+    void initialize();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
   const signInWithPassword = async (email: string, password: string) => {

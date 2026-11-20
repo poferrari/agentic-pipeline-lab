@@ -57,7 +57,7 @@ export function AiChatDrawer() {
       return;
     }
 
-    const userMsgId = `user-${Date.now()}`;
+    const userMsgId = `user-${crypto.randomUUID()}`;
     const newMessages: DisplayMessage[] = [
       ...messages,
       { id: userMsgId, role: 'user', content: trimmed },
@@ -80,7 +80,7 @@ export function AiChatDrawer() {
           setMessages((prev) => [
             ...prev,
             {
-              id: `assistant-${Date.now()}`,
+              id: `assistant-${crypto.randomUUID()}`,
               role: 'assistant',
               content: data.reply,
               suggestedActions: data.suggestedActions,
@@ -92,7 +92,7 @@ export function AiChatDrawer() {
           setMessages((prev) => [
             ...prev,
             {
-              id: `err-${Date.now()}`,
+              id: `err-${crypto.randomUUID()}`,
               role: 'assistant',
               content: `Error: ${err.message || 'Unable to connect to AI Advisor.'}`,
               isError: true,
