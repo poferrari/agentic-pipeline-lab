@@ -1,23 +1,23 @@
+# Gemini pre-command guard. Policy lives in safety-policy.ps1 (shared with the Claude hook).
+# Fails closed: an unparseable payload is denied. Gemini has no "ask" decision, so ask verdicts deny.
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$ErrorActionPreference = "SilentlyContinue"
-$inputJson = [Console]::In.ReadToEnd()
-if ([string]::IsNullOrWhiteSpace($inputJson)) {
-    Write-Output '{"decision":"allow"}'
+. "$PSScriptRoot/safety-policy.ps1"
+
+function Write-Decision([string]$decision, [string]$reason) {
+    @{ decision = $decision; reason = $reason } | ConvertTo-Json -Compress
     exit 0
 }
 
+$inputJson = [Console]::In.ReadToEnd()
+if ([string]::IsNullOrWhiteSpace($inputJson)) { Write-Decision "allow" "" }
+
 try {
-    $payload = $inputJson | ConvertFrom-Json
-    $cmd = $payload.toolCall.args.CommandLine
-    if ($cmd -match "(?i)(git\s+push\s+.*--force|rm\s+-rf\s+/|DROP\s+DATABASE|Format-Volume)") {
-        $deny = @{
-            decision = "deny"
-            reason = "Blocked by Safety Guardrail: destructive command detected."
-        }
-        $deny | ConvertTo-Json -Compress
-        exit 0
-    }
-} catch {}
+    $command = [string]($inputJson | ConvertFrom-Json -ErrorAction Stop).toolCall.args.CommandLine
+} catch {
+    Write-Decision "deny" "Safety guard could not parse the hook payload."
+}
 
-Write-Output '{"decision":"allow"}'
-
+$verdict = Get-CommandVerdict $command
+if ($verdict.Decision -eq "allow") { Write-Decision "allow" "" }
+Write-Decision "deny" $verdict.Reason

@@ -1,112 +1,160 @@
-# Unified Quality Gate for Agentic Pipeline (validate-all.ps1)
-# Executes Linting, Strict Compilation (-warnaserror), Security Audit, and Automated Tests
+# Unified quality gate for the agentic pipeline. Its exit code is the ONLY accepted proof that checks pass.
+#
+#   powershell -File scripts/validate-all.ps1             # full gate (needs Docker for integration tests)
+#   powershell -File scripts/validate-all.ps1 -Fast       # skips integration tests, CRAP and mutation (reported as NOT RUN)
+#   powershell -File scripts/validate-all.ps1 -Mutation   # adds Stryker.NET mutation testing (slow)
+#
+# Every step ends as PASS, FAIL, or NOT RUN. NOT RUN is never reported as success: the gate exits 1 on any
+# FAIL, and 2 when nothing failed but something did not run (only a fully green run is a green gate).
+# CI calls the same commands (parity rule, AGENTS.md section 5).
+
+param(
+    [switch]$Fast,
+    [switch]$Mutation
+)
 
 $ErrorActionPreference = "Stop"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $repoRoot
+. (Join-Path $repoRoot ".agents/scripts/safety-policy.ps1")
 
-Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host " [QUALITY GATE] STARTING AGENTIC PIPELINE VALIDATION" -ForegroundColor Cyan
-Write-Host "=================================================================" -ForegroundColor Cyan
+$results = [ordered]@{}
 
-# 1. Verification of Secrets in Git
-Write-Host "`n[1/4] Verifying security hygiene and sensitive tracked files..." -ForegroundColor Yellow
-if (Test-Path ".git") {
-    $trackedEnv = git ls-files ".env" "appsettings.Local.json"
-    if ($trackedEnv) {
-        Write-Error "OWASP BLOCKER: Sensitive configuration file ($trackedEnv) is tracked by Git!"
-        exit 1
-    }
-}
-Write-Host "[OK] No sensitive .env or local configuration files tracked." -ForegroundColor Green
-
-# 2. Backend Validation (.NET C# Minimal API + Hexagonal + DDD)
-Write-Host "`n[2/4] Validating Backend C# (.NET)..." -ForegroundColor Yellow
-$backendCandidates = @("src/backend")
-if (Test-Path "sandbox") {
-    $sandboxBackends = Get-ChildItem -Path "sandbox" -Directory | ForEach-Object { Join-Path $_.FullName "src/backend" } | Where-Object { Test-Path $_ }
-    $backendCandidates += $sandboxBackends
-}
-
-$validatedAnyBackend = $false
-foreach ($backendDir in $backendCandidates) {
-    if (Test-Path $backendDir) {
-        $slnFiles = @(Get-ChildItem -Path $backendDir -Include "*.sln", "*.slnx", "*.csproj" -Recurse -Depth 2 -ErrorAction SilentlyContinue)
-        if ($slnFiles.Count -gt 0) {
-            $validatedAnyBackend = $true
-            Write-Host " -> Validating solution in: $backendDir" -ForegroundColor Cyan
-            Push-Location $backendDir
-            try {
-                Write-Host " -> Running dotnet restore..."
-                dotnet restore
-                if ($LASTEXITCODE -ne 0) { throw "Failed dotnet restore ($backendDir)" }
-
-                Write-Host " -> Verifying code formatting and style (dotnet format)..."
-                dotnet format --verify-no-changes --no-restore
-                if ($LASTEXITCODE -ne 0) { throw "Failed dotnet format ($backendDir)." }
-
-                Write-Host " -> Compiling in strict mode (Zero Warnings = -warnaserror)..."
-                dotnet build --configuration Release --no-restore -warnaserror
-                if ($LASTEXITCODE -ne 0) { throw "Failed strict backend build ($backendDir)." }
-
-                Write-Host " -> Running Automated Tests (Unit, Architecture, and Integration)..."
-                dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
-                if ($LASTEXITCODE -ne 0) { throw "Failed automated backend tests ($backendDir)." }
-
-                Write-Host "[OK] Backend C# ($backendDir) approved with 0 errors and 0 warnings!" -ForegroundColor Green
-            } finally {
-                Pop-Location
-            }
-        }
-    }
-}
-
-if (-not $validatedAnyBackend) {
-    Write-Host "[INFO] No backend solution found in src/backend or sandbox/*/src/backend." -ForegroundColor DarkGray
-}
-
-# 3. Frontend Validation (React / Next.js + TypeScript + TanStack Query + Vitest)
-Write-Host "`n[3/4] Validating Frontend (TypeScript / React)..." -ForegroundColor Yellow
-if (Test-Path "src/frontend/package.json") {
-    Push-Location "src/frontend"
+function Invoke-Step([string]$name, [scriptblock]$action) {
+    Write-Host "`n>> $name" -ForegroundColor Yellow
     try {
-        Write-Host " -> Running Linter (npm run lint)..."
-        npm run lint
-        if ($LASTEXITCODE -ne 0) { throw "Failed Frontend ESLint." }
+        $status = & $action
+        $results[$name] = if ($status -eq "NOT RUN") { "NOT RUN" } else { "PASS" }
+    } catch {
+        Write-Host "   $($_.Exception.Message)" -ForegroundColor Red
+        $results[$name] = "FAIL"
+    }
+}
 
-        Write-Host " -> Running strict Typecheck (npm run typecheck)..."
-        npm run typecheck
-        if ($LASTEXITCODE -ne 0) { throw "Failed TypeScript type checking." }
+function Assert-ExitCode([string]$what) {
+    if ($LASTEXITCODE -ne 0) { throw "$what failed (exit code $LASTEXITCODE)." }
+}
 
-        Write-Host " -> Running Automated Tests (npm run test:run)..."
-        npm run test:run
-        if ($LASTEXITCODE -ne 0) { throw "Failed Frontend Vitest/MSW tests." }
+function Test-Tool([string]$name) { return [bool](Get-Command $name -ErrorAction SilentlyContinue) }
 
-        Write-Host "[OK] Frontend approved with 0 errors!" -ForegroundColor Green
+$backendDir = Join-Path $repoRoot "src/backend"
+$frontendDir = Join-Path $repoRoot "src/frontend"
+
+# --- Governance and policy ---------------------------------------------------------------------------
+Invoke-Step "Governance artifacts present" {
+    $required = @(
+        "AGENTS.md", "CLAUDE.md", "docs/pipeline/DEFINITION_OF_READY.md", "docs/pipeline/DEFINITION_OF_DONE.md",
+        "docs/templates/SPEC_TEMPLATE.md", "docs/templates/TASKS_TEMPLATE.md", ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml", ".agents/scripts/safety-policy.ps1", ".jscpd.json", "src/backend/stryker-config.json"
+    )
+    $missing = $required | Where-Object { -not (Test-Path $_) }
+    if ($missing) { throw "Missing governance files: $($missing -join ', ')" }
+}
+
+Invoke-Step "Safety hook policy tests" {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File ".agents/scripts/tests/safety-policy.tests.ps1"; Assert-ExitCode "Safety policy tests"
+    & powershell -NoProfile -ExecutionPolicy Bypass -File ".agents/scripts/tests/hooks.tests.ps1"; Assert-ExitCode "Hook entry point tests"
+}
+
+Invoke-Step "English-only repository artifacts (EN-US)" {
+    if (-not (Test-Tool "python")) { throw "python is required for the English-only check." }
+    python -I scripts/quality/check_english_only.py; Assert-ExitCode "English-only check"
+}
+
+Invoke-Step "Secrets hygiene" {
+    $trackedSecrets = git ls-files ".env" "appsettings.Local.json" "appsettings.Development.json"
+    if ($trackedSecrets) { throw "OWASP BLOCKER: sensitive file tracked by Git: $trackedSecrets" }
+    if (-not (Test-Tool "gitleaks")) { Write-Host "   gitleaks not installed; tracked-file check only." -ForegroundColor DarkYellow; return "NOT RUN" }
+    gitleaks dir . --redact --exit-code 1 --no-banner; Assert-ExitCode "gitleaks"
+}
+
+# --- Backend ------------------------------------------------------------------------------------------
+$backendSolution = Join-Path $backendDir "MarketPulse.sln"
+if (Test-Path $backendSolution) {
+    Invoke-Step "Backend restore" { dotnet restore $backendSolution; Assert-ExitCode "dotnet restore" }
+    Invoke-Step "Backend format (dotnet format)" { dotnet format $backendSolution --verify-no-changes --no-restore; Assert-ExitCode "dotnet format" }
+    Invoke-Step "Backend strict build (-warnaserror)" { dotnet build $backendSolution --configuration Release --no-restore -warnaserror; Assert-ExitCode "dotnet build" }
+    Invoke-Step "Backend vulnerable NuGet packages" {
+        $output = dotnet list $backendSolution package --vulnerable --include-transitive | Out-String
+        Write-Host $output
+        if ($output -match "has the following vulnerable packages") { throw "Vulnerable NuGet packages detected." }
+    }
+
+    $testResults = Join-Path $backendDir "TestResults"
+    if (Test-Path $testResults) { Remove-Item -Recurse -Force $testResults }
+    $coverageArgs = @("--collect:XPlat Code Coverage", "--results-directory", $testResults, "--", "DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover")
+
+    Invoke-Step "Backend unit and architecture tests" {
+        dotnet test (Join-Path $backendDir "tests/App.UnitTests") --configuration Release --no-build @coverageArgs; Assert-ExitCode "unit tests"
+        dotnet test (Join-Path $backendDir "tests/App.ArchTests") --configuration Release --no-build @coverageArgs; Assert-ExitCode "architecture tests"
+    }
+
+    Invoke-Step "Backend integration tests (Testcontainers)" {
+        if ($Fast) { return "NOT RUN" }
+        if (-not (Test-Tool "docker")) { throw "Docker is required for integration tests." }
+        docker info *> $null
+        if ($LASTEXITCODE -ne 0) { throw "Docker daemon is not running. Integration tests would silently fall back to in-memory (see learnedLessons, lesson 12). Start Docker Desktop and rerun." }
+        dotnet test (Join-Path $backendDir "tests/App.IntegrationTests") --configuration Release --no-build @coverageArgs; Assert-ExitCode "integration tests"
+    }
+
+    Invoke-Step "CRAP < 10 gate (ratchet baseline)" {
+        if ($Fast) { return "NOT RUN" }
+        python -I scripts/quality/crap_report.py "src/backend/TestResults/**/coverage.opencover.xml"; Assert-ExitCode "CRAP gate"
+    }
+
+    Invoke-Step "Mutation testing (Stryker.NET)" {
+        if (-not $Mutation) { return "NOT RUN" }
+        dotnet tool restore; Assert-ExitCode "dotnet tool restore"
+        Push-Location $backendDir
+        try { dotnet tool run dotnet-stryker; Assert-ExitCode "Stryker.NET" } finally { Pop-Location }
+    }
+} else {
+    Write-Host "`n[INFO] No backend solution found; backend steps skipped." -ForegroundColor DarkGray
+}
+
+# --- Frontend -----------------------------------------------------------------------------------------
+if (Test-Path (Join-Path $frontendDir "package.json")) {
+    Push-Location $frontendDir
+    try {
+        Invoke-Step "Frontend lint" { npm run lint; Assert-ExitCode "npm run lint" }
+        Invoke-Step "Frontend strict typecheck" { npm run typecheck; Assert-ExitCode "npm run typecheck" }
+        Invoke-Step "Frontend tests (Vitest + MSW)" { npm run test; Assert-ExitCode "npm run test" }
+        Invoke-Step "Frontend production build" {
+            $env:NEXT_PUBLIC_API_URL = "http://localhost:8080"
+            $env:NEXT_PUBLIC_SUPABASE_URL = "http://localhost:54321"
+            $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "placeholder-anon-key-for-build-only"
+            npm run build; Assert-ExitCode "npm run build"
+        }
+        Invoke-Step "Frontend vulnerable npm packages (high+)" { npm audit --omit=dev --audit-level=high; Assert-ExitCode "npm audit" }
     } finally {
         Pop-Location
     }
-} else {
-    Write-Host "[INFO] Frontend (src/frontend/package.json) not yet initialized." -ForegroundColor DarkGray
 }
 
-# 4. Pipeline Governance Documentation Integrity
-Write-Host "`n[4/4] Verifying Quality Gates governance integrity (DoR / DoD / AGENTS.md)..." -ForegroundColor Yellow
-$requiredFiles = @(
-    "AGENTS.md",
-    "docs/pipeline/DEFINITION_OF_READY.md",
-    "docs/pipeline/DEFINITION_OF_DONE.md",
-    "docs/templates/SPEC_TEMPLATE.md",
-    "docs/templates/TASKS_TEMPLATE.md",
-    ".github/PULL_REQUEST_TEMPLATE.md",
-    ".github/workflows/ci.yml"
-)
-foreach ($file in $requiredFiles) {
-    if (-not (Test-Path $file)) {
-        Write-Error "Required pipeline governance file missing: $file"
-        exit 1
-    }
+# --- Cross-cutting ------------------------------------------------------------------------------------
+Invoke-Step "Duplication gate (jscpd)" {
+    if (-not (Test-Tool "npx")) { return "NOT RUN" }
+    npx --yes jscpd@5.4.3 --config .jscpd.json; Assert-ExitCode "jscpd"
 }
-Write-Host "[OK] All pipeline governance artifacts are present and intact!" -ForegroundColor Green
 
-Write-Host "`n=================================================================" -ForegroundColor Green
-Write-Host " [SUCCESS] QUALITY GATE COMPLETED WITH 100% APPROVAL!" -ForegroundColor Green
-Write-Host "=================================================================" -ForegroundColor Green
+# --- Summary ------------------------------------------------------------------------------------------
+Write-Host "`n=================================================================" -ForegroundColor Cyan
+Write-Host " QUALITY GATE SUMMARY" -ForegroundColor Cyan
+Write-Host "=================================================================" -ForegroundColor Cyan
+foreach ($entry in $results.GetEnumerator()) {
+    $color = switch ($entry.Value) { "PASS" { "Green" } "FAIL" { "Red" } default { "DarkYellow" } }
+    Write-Host ("{0,-9} {1}" -f $entry.Value, $entry.Key) -ForegroundColor $color
+}
+
+$failed = @($results.Values | Where-Object { $_ -eq "FAIL" }).Count
+$notRun = @($results.Values | Where-Object { $_ -eq "NOT RUN" }).Count
+$stateDir = Join-Path $repoRoot ".agents/.state"
+$marker = Join-Path $stateDir "validate-all.ok"
+
+if ($failed -gt 0) { Write-Host "`nGATE RED: $failed step(s) failed." -ForegroundColor Red; exit 1 }
+if ($notRun -gt 0) { Write-Host "`nGATE INCOMPLETE: $notRun step(s) NOT RUN. Not a green gate." -ForegroundColor DarkYellow; exit 2 }
+
+New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+Set-Content -Path $marker -Value (Get-WorkspaceFingerprint $repoRoot) -Encoding ascii
+Write-Host "`nGATE GREEN: every step executed and passed." -ForegroundColor Green
+exit 0

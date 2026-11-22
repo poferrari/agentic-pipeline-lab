@@ -1,0 +1,21 @@
+{
+  "App.Api.Endpoints.EndpointRouteBuilderExtensions::Microsoft.AspNetCore.Routing.IEndpointRouteBuilder App.Api.Endpoints.EndpointRouteBuilderExtensions::MapEndpoints(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder)": 10.0,
+  "App.Api.Middleware.OriginShieldingMiddleware/<InvokeAsync>d__5::System.Void App.Api.Middleware.OriginShieldingMiddleware/<InvokeAsync>d__5::MoveNext()": 10.0,
+  "App.Api.Middleware.RequestTelemetryMiddleware/<InvokeAsync>d__5::System.Void App.Api.Middleware.RequestTelemetryMiddleware/<InvokeAsync>d__5::MoveNext()": 20.1,
+  "App.Application.MarketPulse.Commands.CreateWatchItem.CreateWatchItemCommandHandler/<HandleAsync>d__7::System.Void App.Application.MarketPulse.Commands.CreateWatchItem.CreateWatchItemCommandHandler/<HandleAsync>d__7::MoveNext()": 22.0,
+  "App.Application.MarketPulse.Queries.GetExchangeRates.GetExchangeRatesQueryHandler/<HandleAsync>d__3::System.Void App.Application.MarketPulse.Queries.GetExchangeRates.GetExchangeRatesQueryHandler/<HandleAsync>d__3::MoveNext()": 16.7,
+  "App.Domain.MarketPulse.Entities.CurrencyWatchItem::App.Domain.Common.Result`1<App.Domain.MarketPulse.Entities.CurrencyWatchItem> App.Domain.MarketPulse.Entities.CurrencyWatchItem::Create(System.Guid,App.Domain.MarketPulse.ValueObjects.CurrencyCode,App.Domain.MarketPulse.ValueObjects.CurrencyCode,App.Domain.MarketPulse.ValueObjects.TargetRate,System.Boolean,System.String,System.Nullable`1<System.DateTimeOffset>)": 12.0,
+  "App.Infrastructure.Ai.OpenAiChatAdvisorAdapter/<GetAdviceAsync>d__6::System.Void App.Infrastructure.Ai.OpenAiChatAdvisorAdapter/<GetAdviceAsync>d__6::MoveNext()": 645.8,
+  "App.Infrastructure.Ai.OpenAiChatAdvisorAdapter::App.Domain.MarketPulse.Ports.AiAdvisorResult App.Infrastructure.Ai.OpenAiChatAdvisorAdapter::EvaluateDeterministicEngine(System.String,System.String,System.String)": 107.2,
+  "App.Infrastructure.DependencyInjection::Microsoft.Extensions.DependencyInjection.IServiceCollection App.Infrastructure.DependencyInjection::AddInfrastructure(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)": 48.1,
+  "App.Infrastructure.ExternalApis.Frankfurter.FrankfurterExchangeAdapter/<FetchFromFrankfurterWithFallbackAsync>d__6::System.Void App.Infrastructure.ExternalApis.Frankfurter.FrankfurterExchangeAdapter/<FetchFromFrankfurterWithFallbackAsync>d__6::MoveNext()": 22.2,
+  "App.Infrastructure.ExternalApis.Frankfurter.FrankfurterExchangeAdapter::App.Application.MarketPulse.DTOs.ExchangeRatesQuoteDto App.Infrastructure.ExternalApis.Frankfurter.FrankfurterExchangeAdapter::BuildResilientFallbackQuote(System.String,System.Collections.Generic.IReadOnlyCollection`1<System.String>)": 42.0,
+  "App.Infrastructure.Messaging.CurrencyAlertConsumer/<ConsumeCore>d__7::System.Void App.Infrastructure.Messaging.CurrencyAlertConsumer/<ConsumeCore>d__7::MoveNext()": 31.2,
+  "App.Infrastructure.Messaging.MassTransitEventBusPublisher/<PublishAsync>d__3`1::System.Void App.Infrastructure.Messaging.MassTransitEventBusPublisher/<PublishAsync>d__3`1::MoveNext()": 16.7,
+  "App.Infrastructure.RateLimiting.OutboundLeakyBucketHandler::System.Void App.Infrastructure.RateLimiting.OutboundLeakyBucketHandler::.ctor(Microsoft.Extensions.Options.IOptions`1<App.Infrastructure.RateLimiting.LeakyBucketOptions>,Microsoft.Extensions.Logging.ILogger`1<App.Infrastructure.RateLimiting.OutboundLeakyBucketHandler>)": 10.0,
+  "App.Infrastructure.RateLimiting.OutboundLeakyBucketHandler::System.Void App.Infrastructure.RateLimiting.OutboundLeakyBucketHandler::Dispose(System.Boolean)": 20.0,
+  "App.Infrastructure.Security.CurrentUserProvider::System.Boolean App.Infrastructure.Security.CurrentUserProvider::get_IsAuthenticated()": 42.0,
+  "App.Infrastructure.Security.CurrentUserProvider::System.Guid App.Infrastructure.Security.CurrentUserProvider::GetCurrentUserId()": 12.7,
+  "Program/<<Main>$>d__0::System.Void Program/<<Main>$>d__0::MoveNext()": 64.8,
+  "Program::System.String Program::ResolveClientPartitionKey(Microsoft.AspNetCore.Http.HttpContext)": 49.6
+}

@@ -1,0 +1,41 @@
+name: "Mutation Testing (Stryker.NET) - ub-mode Anti-Coverage-Theater"
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation-tests:
+    name: "Backend: Stryker.NET on Domain and Application"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore Local Tools (pinned in dotnet-tools.json)
+        run: dotnet tool restore
+
+      - name: Run Stryker.NET (fails below the configured break threshold)
+        working-directory: src/backend
+        run: dotnet tool run dotnet-stryker
+
+      - name: Upload Mutation Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: src/backend/StrykerOutput/**/reports/
+          if-no-files-found: warn

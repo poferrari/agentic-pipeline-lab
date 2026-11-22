@@ -1,0 +1,10 @@
+# Justified exceptions to the English-only rule. Format: <path-glob>[::<substring>]
+# Brazilian LGPD legal terms of art keep their official Portuguese names.
+.agents/agents/legal-compliance-privacy-officer.md::Encarregado de Dados
+.agents/agents/legal-compliance-privacy-officer.md::Adequação
+.agents/agents/legal-compliance-privacy-officer.md::Livre Acesso
+.agents/agents/legal-compliance-privacy-officer.md::Segurança & Prevenção
+.agents/agents/legal-compliance-privacy-officer.md::Não Discriminação
+# The checker itself must contain the detection patterns.
+scripts/quality/check_english_only.py
+scripts/quality/english-allowlist.txt

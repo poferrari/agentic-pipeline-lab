@@ -1,7 +1,8 @@
 ---
 name: frontend-web-developer
 description: Senior Frontend Engineer specializing in React, Next.js, strict TypeScript, advanced REST API consumption with TanStack Query v5, OpenAPI TypeScript, Zod, Supabase Auth, Uncle Bob Disciplines (ub-mode), LGPD/GDPR privacy compliance, and automated testing (Vitest, React Testing Library, MSW, Playwright).
-model: inherit
+model: sonnet
+tools: Read, Grep, Glob, Write, Edit, Bash, PowerShell
 mainAgent: true
 subagent: true
 skills:

@@ -16,6 +16,7 @@ No Task, Feature, or Pull Request is considered **Done** without **100% of appli
   - **Root Cause Fixes Over Crash Guards**: No superficial `if (x != null)` or blank `try/catch` blocks that merely silence symptom crashes. Fix where the illegal state originated.
   - **Deterministic CRAP Threshold**: Every function/method maintains **$\text{CRAP} < 10$** (low cyclomatic complexity or high behavioral test coverage).
   - **Duplication Threshold (Dryer)**: Zero structural code duplication with similarity $\ge 0.8$.
+- [ ] **Computational Gate (ground truth)**: `scripts/validate-all.ps1` exits 0 with every step PASS. `NOT RUN` steps (exit code 2) are not a green gate; self-reported agent results are never accepted as proof.
 - [ ] **Zero Compilation and Linter Warnings**:
   - Backend: `dotnet build --configuration Release -warnaserror` and `dotnet format --verify-no-changes` pass with **0 errors and 0 warnings**.
   - Frontend: `npm run lint`, `npm run typecheck` (`tsc --noEmit`), and `npm run build` pass with **0 errors and 0 warnings**.
@@ -26,7 +27,7 @@ No Task, Feature, or Pull Request is considered **Done** without **100% of appli
   - **Empty Return Rule**: If tests still pass when every method returns `default`/empty, the test is invalid.
   - Test suites are resilient against mutation testing (e.g. Stryker.NET / Stryker-js): conditional flips (`>` to `<=`, `&&` to `||`) are detected and killed by assertions.
 - [ ] **Unit Tests (Backend & Frontend)**:
-  - All unit tests pass (`dotnet test --filter Category=Unit` and `npm run test:unit`).
+  - All unit tests pass (`dotnet test tests/App.UnitTests` and `npm test`).
   - Domain rules, Value Objects, Command/Query Handlers, and Validators maintain >= 85% meaningful coverage on new modules.
 - [ ] **Integration Tests**:
   - Backend: Minimal API endpoints, PostgreSQL persistence, and RabbitMQ message publish/consume flows are verified via `WebApplicationFactory` + `Testcontainers` (or isolated test environment).

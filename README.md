@@ -24,6 +24,42 @@ Modern software development often suffers from architectural erosion, unvalidate
 
 ---
 
+## 🤖 The Autonomous Agentic Software Factory (V2)
+
+MarketPulse Lab was planned, specified, implemented, and audited end-to-end using our custom **Enterprise Agentic Software Development Pipeline**. The pipeline operates as an autonomous Software Factory governed by the **4 Pillars of Spec-Driven Development (SDD)**:
+
+```mermaid
+flowchart LR
+    subgraph SDDPillars["The 4 SDD Pillars"]
+        Clarity["1. Clarity (Zero Ambiguity)"]
+        Evidence["2. Evidence (Deterministic Tests)"]
+        Independence["3. Independence (Separate Reviewer)"]
+        Continuity["4. Continuity (Memory Bank)"]
+    end
+
+    subgraph FactoryStages["Software Factory V2 Lifecycle"]
+        Stage0["Stage 0: Triage & Memory Ingestion"] --> Stage1["Stage 1: Spec & Atomic Tasks (DoR)"]
+        Stage1 --> Stage2["Stage 2: Parallel Worktree Implementation (TDD)"]
+        Stage2 --> Stage3["Stage 3: Independent QA & DoD Gate"]
+        Stage3 --> Stage4["Stage 4: Memory Sync & PR Delivery"]
+    end
+
+    SDDPillars -.-> FactoryStages
+```
+
+### Complete Agentic Ecosystem Map
+
+| Layer | Components | Description |
+| :--- | :--- | :--- |
+| **8 Specialized Agents** (`.agents/agents/`) | `pipeline-orchestrator`, `product-requirements-analyst`, `domain-architect-planner`, `backend-csharp-developer`, `frontend-web-developer`, `qa-security-reviewer`, `devops-ci-engineer`, `legal-compliance-privacy-officer` | Autonomous specialized roles with strict separation of concerns. Authors never validate their own work. |
+| **14 Operational Skills** (`.agents/skills/`) | `agentic-triage-and-diagnostics`, `repo-memory-bank`, `parallel-feature-worktrees`, `discovery-and-spec`, `csharp-hexagonal-ddd`, `frontend-api-architecture`, `ub-mode`, `owasp-quality-gate`, `pr-delivery-automation`, `run-agentic-pipeline`, etc. | Reusable domain-specific engineering bundles and deterministic quality protocols. |
+| **Repository Memory Bank** (`.agents/memory/`) | `systemPatterns.md`, `learnedLessons.md`, `activeContext.md` | Persistent repository memory ensuring agents never start from a blank slate or repeat past errors. |
+| **Quality Gates** (`docs/pipeline/`) | [Definition of Ready (DoR)](docs/pipeline/DEFINITION_OF_READY.md) & [Definition of Done (DoD)](docs/pipeline/DEFINITION_OF_DONE.md) | 100% checklist enforcement before coding and before PR merge. |
+
+> 📖 **Comprehensive Agentic Architecture Guide**: Read the full documentation in [AGENTIC_DEVELOPMENT_ECOSYSTEM.md](docs/pipeline/AGENTIC_DEVELOPMENT_ECOSYSTEM.md).
+
+---
+
 ## 🏛️ System Architecture
 
 The project is built as a **Modular Hexagonal Full-Stack Solution**, composed of an ASP.NET Core Minimal API backend and a Next.js 14 App Router frontend:

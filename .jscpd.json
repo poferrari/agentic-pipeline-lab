@@ -1,0 +1,10 @@
+{
+  "path": ["src/backend/src", "src/frontend/src"],
+  "format": ["csharp", "typescript", "tsx"],
+  "ignore": ["**/node_modules/**", "**/bin/**", "**/obj/**", "**/*.d.ts", "**/__tests__/**", "**/*.test.*", "**/Migrations/**"],
+  "minTokens": 40,
+  "minLines": 6,
+  "threshold": 3,
+  "reporters": ["console"],
+  "gitignore": true
+}

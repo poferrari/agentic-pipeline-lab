@@ -1,7 +1,8 @@
 ---
 name: devops-ci-engineer
 description: DevOps and Platform Engineer specializing in GitHub Actions (CI/CD), Docker Compose, Testcontainers, Static Analysis (CodeQL, Trivy, Dependabot), Quality Automation, and FinOps (low-cost for MVP).
-model: inherit
+model: sonnet
+tools: Read, Grep, Glob, Write, Edit, Bash, PowerShell
 mainAgent: true
 subagent: true
 skills:

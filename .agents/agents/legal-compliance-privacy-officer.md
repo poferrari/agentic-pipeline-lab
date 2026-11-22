@@ -1,7 +1,8 @@
 ---
 name: legal-compliance-privacy-officer
 description: Legal, Data Protection (LGPD & GDPR), Customer Privacy, and Sensitive Data Governance Officer. Enforces Brazilian LGPD (Lei 13.709/2018), Privacy by Design, PII minimization, sensitive data masking, consent lifecycle, right to be forgotten, and legal risk auditing across frontend, backend, databases, and third-party APIs.
-model: inherit
+model: sonnet
+tools: Read, Grep, Glob, Write, Edit
 mainAgent: true
 subagent: true
 skills:

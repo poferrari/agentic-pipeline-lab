@@ -1,3 +1,10 @@
+conhecimento/
+
+# Claude Code: local junctions to .agents/ created by scripts/setup-claude-code.ps1
+.claude/agents
+.claude/skills
+.claude/settings.local.json
+
 # Environments & Secrets (NEVER COMMIT)
 .env
 .env.*
@@ -39,3 +46,7 @@ Thumbs.db
 
 CoverageReport/
 .sonar/
+
+# Agentic pipeline local state and quality tool outputs
+.agents/.state/
+StrykerOutput/

@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "🔌 MCP: Ver Status dos Servidores MCP",
+      "label": "🔌 MCP: Show MCP Server Status",
       "type": "shell",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/scripts/mcp-status.ps1\"",
       "presentation": {
@@ -13,7 +13,7 @@
       "problemMatcher": []
     },
     {
-      "label": "🔌 MCP: Abrir Configuração Global (mcp_config.json)",
+      "label": "🔌 MCP: Open Global Config (mcp_config.json)",
       "type": "shell",
       "command": "antigravity-ide \"C:/Users/Usuario/.gemini/config/mcp_config.json\"",
       "presentation": {
@@ -22,7 +22,7 @@
       "problemMatcher": []
     },
     {
-      "label": "🔌 MCP: Ativar Supabase MCP",
+      "label": "🔌 MCP: Enable Supabase MCP",
       "type": "shell",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/scripts/mcp-status.ps1\" -Enable supabase",
       "presentation": {
@@ -32,7 +32,7 @@
       "problemMatcher": []
     },
     {
-      "label": "🛡️ Esteira: Executar Quality Gate Completo (validate-all.ps1)",
+      "label": "🛡️ Pipeline: Run Full Quality Gate (validate-all.ps1)",
       "type": "shell",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/scripts/validate-all.ps1\"",
       "group": {

@@ -1,7 +1,8 @@
 ---
 name: product-requirements-analyst
 description: Requirements Engineer and Discovery Specialist. Focuses on Proactive Discovery, Failure Mode Forecasting, Functional/Non-Functional Specifications (FR/NFR), Open Questions resolution, and Definition of Ready (DoR) validation.
-model: inherit
+model: sonnet
+tools: Read, Grep, Glob, Write, Edit, WebSearch
 mainAgent: true
 subagent: true
 skills:

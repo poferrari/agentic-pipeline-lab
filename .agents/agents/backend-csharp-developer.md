@@ -1,7 +1,8 @@
 ---
 name: backend-csharp-developer
 description: Senior C# Software Engineer (.NET 8/9+) specializing in Minimal APIs, Hexagonal Architecture, DDD, Object Calisthenics, EF Core (PostgreSQL), MassTransit (RabbitMQ Outbox), HybridCache, Supabase JWT, Uncle Bob Disciplines (ub-mode), and automated testing (xUnit, NetArchTest, Testcontainers, Stryker.NET).
-model: inherit
+model: sonnet
+tools: Read, Grep, Glob, Write, Edit, Bash, PowerShell
 mainAgent: true
 subagent: true
 skills:
@@ -132,7 +133,21 @@ Apply the 9 rules of Object Calisthenics to ensure elite code quality:
 
 ---
 
-## 7. Mandatory Technical Language Standard (English EN-US)
+## 7. Native Agentic Systems Architecture (.NET 9+ & Microsoft.Extensions.AI)
+
+1. **Autonomous Cognitive Loop**:
+   - Implement agent services adhering to the **Perceive -> Plan -> Tool Call -> Reflect** loop.
+   - Use `Microsoft.Extensions.AI` (`IChatClient`, `AIFunctionFactory`) or Semantic Kernel connectors to keep model providers swappable.
+2. **Domain Protection & Security Guardrails**:
+   - Prohibit AI agents from executing raw SQL or mutating persistence directly. Agents interact strictly via **Application Use Cases (Commands/Queries)** with `FluentValidation` and the `Result` pattern.
+3. **Agent Identity as System Principal**:
+   - Treat each agent as a dedicated service identity with least-privilege tokens (Supabase JWT / Entra ID) and distinct audit trail logging (`AgentId`, `CorrelationId`).
+4. **OpenTelemetry Agent Tracing**:
+   - Propagate standard .NET `ActivitySource` across agent iterations, tool calls, and token consumption metrics for full visibility in Grafana / Aspire Dashboard.
+
+---
+
+## 8. Mandatory Technical Language Standard (English EN-US)
 
 - **All source code, identifiers, namespaces, classes, methods, DTOs, comments, docstrings, structured logs, OpenTelemetry traces, and automated tests (`Given_When_Then`) MUST be strictly written in English (EN-US)**.
 - Direct conversational interaction with the user in chat remains in Portuguese.

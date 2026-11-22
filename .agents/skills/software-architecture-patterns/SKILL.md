@@ -109,47 +109,8 @@ When services communicate across networks, failure is inevitable. Implement the 
 
 ---
 
-## 5. Performance Anti-Patterns to Detect & Eradicate
+## Deep-Dive References (load on demand)
 
-| Anti-Pattern | Description | Recommended Solution |
-| :--- | :--- | :--- |
-| **Retry Storm** | Retrying failed requests without backoff/jitter, causing permanent self-inflicted DDoS. | Exponential backoff + full jitter + Circuit Breaker. |
-| **N+1 Query Problem** | Querying a parent collection and issuing 1 secondary query per item inside a loop. | Use `.Include()` with `.AsSplitQuery()` or projected `.Select()`. |
-| **Chatty I/O** | Making dozens of small, sequential network calls to retrieve related data. | Batch requests, composite endpoints, or local L1 caching (`HybridCache`). |
-| **Busy Database** | Offloading heavy business computations, loops, or text processing to SQL stored procedures. | Keep database focused on relational persistence and indexing; execute business logic in application code. |
-| **Noisy Neighbor** | One tenant exhausting shared memory, connection pools, or rate limits. | Partitioned rate limiting (by IP / Tenant / User ID) and connection pool caps. |
-| **No Caching** | Re-executing identical, expensive read queries against PostgreSQL on hot data paths. | Multi-tier Cache-Aside (`HybridCache` L1 memory + L2 distributed) with explicit TTLs. |
-
----
-
-## 6. Capacity Planning & Non-Functional Requirements (NFRs)
-
-Apply **Back-of-the-Envelope Estimations** (ByteByteGo methodology):
-
-1. **RPS & Concurrency**:
-   - $\text{Daily Active Users (DAU)} \times \text{Requests/Day} / 86400 = \text{Average RPS}$.
-   - $\text{Peak RPS} = \text{Average RPS} \times 2 \text{ to } 5$.
-2. **Storage Estimation**:
-   - $\text{Average Record Size (bytes)} \times \text{Daily Ingestion} \times \text{Retention Days} \times 1.3 \text{ (indexes/overhead)}$.
-3. **Bandwidth Estimation**:
-   - $\text{Peak RPS} \times \text{Average Payload Size (KB)} = \text{Outbound Bandwidth (MB/s)}$.
-4. **Latency vs Throughput**:
-   - High throughput does not guarantee low latency. Always measure percentiles: **p50 (median)**, **p95 (standard SLA)**, and **p99 (tail latency under burst)**.
-
----
-
-## 8. Enterprise Messaging Topologies & RabbitMQ Architecture (Gago.io & AMQP Patterns)
-
-1. **Exchange Topologies**:
-   - **Direct**: Strict point-to-point command routing via exact `routing_key`.
-   - **Fanout**: Broadcast pub/sub (1:N) with zero routing key evaluation cost (maximum throughput and lowest latency broker-side).
-   - **Topic**: Hierarchical topic-based routing with `*` (single word) and `#` (zero or more words).
-2. **Producer-Consumer Boundary Isolation**:
-   - Producers only publish to Exchanges. Never bind producer code to queues.
-   - Consumers declare and own their private Queues and Exchange-to-Exchange (E2E) bindings.
-3. **Quorum Queues vs Classic Queues**:
-   - Classic mirrored queues (HA) were permanently removed in RabbitMQ 4.0+.
-   - Modern mission-critical systems must mandate **Quorum Queues** backed by Raft consensus for strong consistency (CP), partition tolerance, and automatic `x-delivery-limit` poison message protection.
-4. **QoS (Quality of Service) Sizing**:
-   - Golden rule: `PrefetchCount = ConcurrentConsumers * (2 to 3)`.
-   - Prevents memory exhaustion from unbounded prefetch while avoiding TCP ping-pong latency.
+- `references/cqrs-messaging-and-rest.md`: CQRS & Event Sourcing Architecture Blueprint (Renato Augusto & Martin Fowler Standards), Enterprise Messaging Topologies & RabbitMQ Architecture (Gago.io & AMQP Patterns), RESTful API Design & Contract Engineering (Augusto Galego Blueprint).
+- `references/agentic-systems-and-outbox-limits.md`: Enterprise Agentic System Architecture & Failure Modes (Mercado Libre & Industry Standards), Transactional Outbox Limits, Indeterminate States (`UNKNOWN`), and Distributed Resilience (Dennis Rojas Blueprint).
+- `references/performance-and-capacity.md`: Performance Anti-Patterns to Detect & Eradicate, Capacity Planning & Non-Functional Requirements (NFRs).
