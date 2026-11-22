@@ -13,6 +13,7 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
 {
     private readonly PostgreSqlContainer? _postgresContainer;
     private readonly RabbitMqContainer? _rabbitMqContainer;
+    private Exception? _startupFailure;
 
     public bool IsDockerEnvironmentActive { get; private set; }
     public string? RabbitMqConnectionString => _rabbitMqContainer?.GetConnectionString();
@@ -35,34 +36,39 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
                 .WithPassword("guest")
                 .Build();
         }
-        catch
+        catch (Exception ex)
         {
-            _postgresContainer = null;
-            _rabbitMqContainer = null;
+            _startupFailure = ex;
         }
     }
 
     public async Task InitializeAsync()
     {
-        if (_postgresContainer is not null && _rabbitMqContainer is not null)
-        {
-            try
-            {
-                await _postgresContainer.StartAsync().ConfigureAwait(false);
-                await _rabbitMqContainer.StartAsync().ConfigureAwait(false);
-                IsDockerEnvironmentActive = true;
+        _startupFailure ??= await TryStartContainersAsync().ConfigureAwait(false);
+        InfrastructureFallbackPolicy.EnsureRealInfrastructure(
+            _startupFailure,
+            Environment.GetEnvironmentVariable(InfrastructureFallbackPolicy.OptInVariable));
+    }
 
-                // Ensure the database schema is created BEFORE the WebHost and background workers start
-                var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>()
-                    .UseNpgsql(_postgresContainer.GetConnectionString());
-                await using var initDbContext = new AppDbContext(optionsBuilder.Options);
-                await initDbContext.Database.EnsureCreatedAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Testcontainers Warning] Docker fallback to in-memory: {ex.Message}");
-                IsDockerEnvironmentActive = false;
-            }
+    private async Task<Exception?> TryStartContainersAsync()
+    {
+        try
+        {
+            await _postgresContainer!.StartAsync().ConfigureAwait(false);
+            await _rabbitMqContainer!.StartAsync().ConfigureAwait(false);
+
+            // Ensure the database schema is created BEFORE the WebHost and background workers start
+            var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(_postgresContainer.GetConnectionString());
+            await using var initDbContext = new AppDbContext(optionsBuilder.Options);
+            await initDbContext.Database.EnsureCreatedAsync().ConfigureAwait(false);
+
+            IsDockerEnvironmentActive = true;
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
         }
     }
 
@@ -76,10 +82,10 @@ public sealed class MarketPulseTestcontainersFactory : WebApplicationFactory<Pro
         builder.UseSetting("Messaging:Retry:MaxIntervalSeconds", "2");
         builder.UseSetting("Messaging:Retry:IntervalDeltaSeconds", "1");
 
-        if (_postgresContainer is not null && _rabbitMqContainer is not null)
+        if (IsDockerEnvironmentActive)
         {
-            builder.UseSetting("ConnectionStrings:Database", _postgresContainer.GetConnectionString());
-            builder.UseSetting("ConnectionStrings:RabbitMq", _rabbitMqContainer.GetConnectionString());
+            builder.UseSetting("ConnectionStrings:Database", DatabaseConnectionString);
+            builder.UseSetting("ConnectionStrings:RabbitMq", RabbitMqConnectionString);
         }
     }
 
