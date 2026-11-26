@@ -275,6 +275,11 @@ jobs:
       - name: English-only repository artifacts
         run: python3 -I scripts/quality/check_english_only.py
 
+      - name: Test hygiene gate (ambient clock, fixed waits)
+        run: |
+          python3 -I -m unittest discover scripts/quality/tests
+          python3 -I scripts/quality/check_test_hygiene.py
+
       - name: Safety hook policy tests
         shell: pwsh
         run: |

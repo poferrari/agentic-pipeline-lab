@@ -50,3 +50,7 @@ CoverageReport/
 # Agentic pipeline local state and quality tool outputs
 .agents/.state/
 StrykerOutput/
+
+# Python bytecode
+__pycache__/
+*.pyc

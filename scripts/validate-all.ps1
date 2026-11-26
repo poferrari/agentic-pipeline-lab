@@ -61,6 +61,13 @@ Invoke-Step "English-only repository artifacts (EN-US)" {
     python -I scripts/quality/check_english_only.py; Assert-ExitCode "English-only check"
 }
 
+Invoke-Step "Test hygiene gate (ambient clock, fixed waits, prompt safety)" {
+    if (-not (Test-Tool "python")) { throw "python is required for the test hygiene gate." }
+    python -I -m unittest discover scripts/quality/tests; Assert-ExitCode "quality gate unit tests"
+    python -I scripts/quality/check_test_hygiene.py; Assert-ExitCode "test hygiene gate"
+    python -I scripts/quality/check_prompt_safety.py; Assert-ExitCode "prompt safety audit"
+}
+
 Invoke-Step "Secrets hygiene" {
     $trackedSecrets = git ls-files ".env" "appsettings.Local.json" "appsettings.Development.json"
     if ($trackedSecrets) { throw "OWASP BLOCKER: sensitive file tracked by Git: $trackedSecrets" }

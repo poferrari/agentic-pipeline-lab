@@ -6,15 +6,36 @@
 #   - "Tests passed" is never taken from the author agent: the gate runner reports the real exit code of
 #     scripts/validate-all.ps1 (0 = green, 1 = failed, 2 = incomplete/NOT RUN).
 #   - QA is independent (read-only) and its blockers are fed back to the developers, at most MAX_FIX_ROUNDS times.
+#   - The same failure twice in a row means the premise is wrong (Attack the Premise): stop and ask the user.
+#   - Agent invocations are capped (MAX_AGENT_CALLS) so a loop can never run away in cost or time.
 #   - The pipeline never pushes, opens, or merges a PR; that requires an explicit user request.
 
 MAX_FIX_ROUNDS = 3
+MAX_AGENT_CALLS = 30
 feature_request = args.get("feature", "Analyze workspace structure and plan MVP implementation")
 
 
 def stop(reason):
     log(f"PIPELINE STOPPED: {reason}")
     raise RuntimeError(reason)
+
+
+_raw_agent = agent
+_agent_calls = 0
+
+
+async def agent(*positional, **keyword):
+    """Budgeted wrapper: refuses to start more than MAX_AGENT_CALLS agent invocations in one run."""
+    global _agent_calls
+    _agent_calls += 1
+    if _agent_calls > MAX_AGENT_CALLS:
+        stop(f"Agent call budget exhausted ({MAX_AGENT_CALLS}). Review the loop and ask the user before continuing.")
+    return await _raw_agent(*positional, **keyword)
+
+
+def failure_signature(kind, lines):
+    """Order-insensitive fingerprint of a failure, used to detect the same failure repeating."""
+    return kind + ":" + "|".join(sorted(line.strip() for line in lines if line.strip()))
 
 
 def object_schema(properties, required):
@@ -135,6 +156,7 @@ async def run_qa():
 
 
 feedback = ""
+previous_signature = None
 approved = False
 for round_number in range(1, MAX_FIX_ROUNDS + 2):
     phase(f"3. Implementation round {round_number}")
@@ -145,6 +167,8 @@ for round_number in range(1, MAX_FIX_ROUNDS + 2):
     log(f"validate-all exit code: {gate['exit_code']}")
     if gate["exit_code"] != 0:
         feedback = f"validate-all.ps1 exited {gate['exit_code']}. Output tail:\n{gate['output_tail']}"
+        failed_steps = [line for line in gate["output_tail"].splitlines() if line.startswith(("FAIL", "NOT RUN"))]
+        signature = failure_signature(f"gate-{gate['exit_code']}", failed_steps)
     else:
         phase(f"5. Independent QA audit (round {round_number})")
         qa_res = await run_qa()
@@ -152,6 +176,12 @@ for round_number in range(1, MAX_FIX_ROUNDS + 2):
             approved = True
             break
         feedback = "QA blockers:\n- " + "\n- ".join(qa_res["blockers"])
+        signature = failure_signature("qa", qa_res["blockers"])
+
+    if signature == previous_signature:
+        stop("Attack the Premise: the same failure repeated after a fix attempt. State the premise in one sentence, "
+             "drop it, and ask the user before another attempt. Last feedback:\n" + feedback)
+    previous_signature = signature
 
     if round_number > MAX_FIX_ROUNDS:
         break
