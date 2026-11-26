@@ -45,6 +45,7 @@ This skill acts as the **Automated Quality & Security Gate** of the pipeline. Ex
    - Reject hollow tests: *“If the test passes when every function returns default or null, throw it out.”*
    - Verify that modifying condition boundaries (`>` to `<=`, `==` to `!=`) causes tests to fail (Mutation Score > 75%).
 6. **Zero Prohibited Dependencies**: `App.Domain` has zero infrastructure `using` statements.
+6b. **Test Design Quality**: one test per equivalence class and boundary (no duplicates), behavior-describing names, no mocks of entities or Value Objects, no fixed delays or ambient clock in tests, and a read-side proof for every state change. Full rules: `.agents/skills/csharp-hexagonal-ddd/references/testing-battery.md`.
 7. **No Exceptions for Business Flow**: Handlers return explicit `Result<T>` values mapped to RFC 7807 `ProblemDetails`.
 8. **No Tracked Secrets in Git**: Verify with `git status` and `git diff` that no `.env` file, database credentials, or private keys are staged.
 

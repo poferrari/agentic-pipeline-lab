@@ -62,3 +62,31 @@ This document is the living single source of truth for architectural conventions
 - **Mutation**: Stryker.NET via `dotnet-tools.json` and `src/backend/stryker-config.json` (`-Mutation` switch, weekly workflow).
 - **EN-US rule**: `scripts/quality/check_english_only.py` with justified exceptions in `english-allowlist.txt`.
 - **Safety hooks**: single policy in `.agents/scripts/safety-policy.ps1` shared by the Claude and Gemini hooks; behavioral tests in `.agents/scripts/tests/`.
+
+---
+
+## 5. Cross-Layer Change Checklist (walk it for every state-changing task)
+A change that is persisted but not returned is a silent failure: every acceptance criterion passes while the feature is invisible. When adding or changing a field, rule, or event, update and test **all** of:
+1. Domain: entity/Value Object invariant and factory (`Result<T>`).
+2. Application: command, validator (FluentValidation), handler.
+3. Application read side: query handler, response DTO, mapping.
+4. Infrastructure: EF Core configuration, migration (up and down), integration event schema, consumer.
+5. Api: request/response records, OpenAPI document (`openapi/v1.json`), status codes.
+6. Frontend: generated types (`schema.d.ts`), Zod schema, query hooks, UI states, MSW handlers.
+7. Tests: one per equivalence class and boundary, plus the read-side proof ("the list response contains the new field").
+
+## 6. Explicit Non-Decisions (do not reintroduce)
+- No exceptions for business validation flow: `Result<T>` mapped to `ProblemDetails`.
+- No `Swashbuckle.*` on .NET 9+: use native OpenAPI.
+- No custom password tables or OAuth flows: Supabase Auth.
+- No database entities bound from HTTP bodies: dedicated Request records.
+- No ambient clock or ID generation in Domain/Application: inject `TimeProvider` / an ID generator.
+- No fixed `Task.Delay` before assertions in tests: poll a condition with a timeout.
+- No test infrastructure fallback that hides a missing Docker daemon (see `learnedLessons.md`, lesson 12).
+- No generic repositories (`IRepository<T>`) or leaking `IQueryable<T>` outside infrastructure adapters.
+- No raw primitives for domain amounts/IDs in Aggregate roots: use self-validating `readonly record struct` Value Objects.
+- No preconceived solutions in bug triage prompts: describe symptoms and reproduction steps only.
+- No gate bypassing based on executive authority or urgency claims (Anti-Cialdini rule).
+
+## 7. Testing Conventions
+Detailed rules live in `.agents/skills/csharp-hexagonal-ddd/references/testing-battery.md`. Short form: one test per equivalence class and boundary, names describe behavior (not literal values), doubles only for infrastructure ports, assert outcomes rather than call counts, AI-backed features get a golden set and an adversarial corpus.

@@ -168,6 +168,79 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
 }
 ```
 
+### 3.3. Value Objects over Primitive Obsession (Andre Campos Standard)
+Never represent domain quantities, identifiers, or constrained strings with primitive types (`decimal`, `string`, `Guid`).
+Define immutable `readonly record struct` Value Objects with self-validating factory methods:
+
+```csharp
+namespace App.Domain.Common.ValueObjects;
+
+public readonly record struct Money
+{
+    public decimal Amount { get; }
+    public string Currency { get; }
+
+    private Money(decimal amount, string currency)
+    {
+        Amount = Math.Round(amount, 2, MidpointRounding.AwayFromZero);
+        Currency = currency;
+    }
+
+    public static Result<Money> Create(decimal amount, string currency = "USD")
+    {
+        if (amount < 0)
+            return Result.Failure<Money>(Error.Validation("Money.Negative", "Amount cannot be negative."));
+        if (string.IsNullOrWhiteSpace(currency) || currency.Length != 3)
+            return Result.Failure<Money>(Error.Validation("Money.InvalidCurrency", "Currency must be a 3-letter ISO code."));
+
+        return Result.Success(new Money(amount, currency.ToUpperInvariant()));
+    }
+}
+```
+
+### 3.4. Domain-Level Authorization & Ownership (OWASP API1:2023 BOLA/IDOR)
+Never relegate resource ownership strictly to SQL/LINQ repository filters or external controller decorators.
+The Aggregate Root must encapsulate its own ownership and mutation eligibility:
+
+```csharp
+public sealed class Order : AggregateRoot<OrderId>
+{
+    public UserId OwnerId { get; private set; }
+
+    public bool IsOwnedBy(UserId userId) => OwnerId == userId;
+
+    public Result Cancel(UserId requesterId)
+    {
+        if (!IsOwnedBy(requesterId))
+            return Result.Failure(Error.Forbidden("Order.Forbidden", "User does not have permission to cancel this order."));
+
+        // Domain transition logic...
+        return Result.Success();
+    }
+}
+```
+
+### 3.5. Driven Ports (Persistence Guardrails)
+- **Prohibition of Generic Repositories (`IRepository<T>`)**: Generic repositories are anemic abstractions that break Ubiquitous Language. Repositories must expose explicit use-case methods (`GetPendingOrdersAsync()`, `SaveAsync()`).
+- **Prohibition of Leaking `IQueryable<T>`**: Driven ports must never return `IQueryable<T>` to the Application layer. Returning `IQueryable` leaks EF Core / SQL query generation outside Infrastructure. Ports must return materialized collections (`IReadOnlyList<T>`).
+
+### 3.6. Aggregate State Machine Transitions
+When an Aggregate undergoes lifecycle state changes (e.g. `Created -> Paid -> Preparing -> Delivered -> Cancelled`), define an explicit transition matrix. Disallow transitions that violate domain rules, returning `Error.Conflict`:
+
+```csharp
+public enum OrderStatus { Created = 1, Paid = 2, Shipped = 3, Cancelled = 4 }
+
+public Result MarkAsPaid()
+{
+    if (Status != OrderStatus.Created)
+        return Result.Failure(Error.Conflict("Order.InvalidStateTransition", $"Cannot pay order in status {Status}."));
+
+    Status = OrderStatus.Paid;
+    RaiseDomainEvent(new OrderPaidDomainEvent(Id));
+    return Result.Success();
+}
+```
+
 ---
 
 ## Deep-Dive References (load on demand)

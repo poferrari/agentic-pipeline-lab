@@ -11,12 +11,16 @@ The purpose of the **DoR** is to eliminate rework, ambiguity, and guesswork duri
 - [ ] **Functional Requirements (FR)**: All primary flows (Happy Path), alternative flows, and business edge cases are enumerated with unique identifiers (`FR-001`, `FR-002`).
 - [ ] **Resolved Open Questions**: No open functional questions remain (`[OPEN QUESTION]` = 0). If an engineering default was assumed, it is documented as a Validated Assumption or ADR.
 - [ ] **Acceptance Criteria (BDD / Gherkin)**: Every requirement has explicit scenarios in `Given / When / Then` format, including error cases.
+- [ ] **Write Side and Read Side Covered**: For every requirement that changes state, the criteria also name each query, response DTO, event, contract, and UI view that must expose the change. Criteria that only describe where data is saved are incomplete (a field can be persisted yet never returned).
+- [ ] **Cross-Layer Change Checklist Applied**: The checklist in `.agents/memory/systemPatterns.md` (section 5) was walked for this change and the touched artifacts are listed in the Tasks.
 
 ## 2. Architecture, Domain Modeling & Uncle Bob Rigor (DDD + Hexagonal + EDA)
 - [ ] **Ubiquitous Language**: Domain concepts (Entities, Aggregates, Value Objects, Events) are named consistently without conflicting synonyms.
 - [ ] **Domain Invariants & Illegal States Impossible**:
   - Domain types are designed so that **illegal states are impossible to represent** (e.g. `readonly record struct`, factory methods with Result return).
   - Business invariants protected by the Aggregate Root are explicit (e.g. "A paid order cannot have items removed").
+  - **No Primitive Obsession**: Domain amounts, codes, and identifiers are modeled as immutable Value Objects (`readonly record struct`) with self-validating factories; no raw primitives in Aggregate roots.
+  - **Resource Ownership (Anti-BOLA/IDOR)**: The Aggregate Root encapsulates its own ownership check (`IsOwnedBy(UserId)`) as a protected domain rule.
 - [ ] **Boundary Discipline (Parse, Don't Validate)**: External data is parsed once at the boundary (DTO -> Domain Value Object); core business logic lives in pure, side-effect-free functions.
 - [ ] **Inbound & Outbound Ports (Hexagonal)**:
   - Which Commands/Queries in the `Application` layer will be implemented?
@@ -48,6 +52,7 @@ The purpose of the **DoR** is to eliminate rework, ambiguity, and guesswork duri
   - List of unit tests (`Domain` invariants and `Application` handlers/validators) to be written using strict TDD.
   - List of integration tests (`Api` + `PostgreSQL` + `RabbitMQ` / `MSW` for frontend) to be written.
   - Tests designed to verify observable behavior rather than mock implementation details.
+  - Equivalence classes and boundary values listed per business rule (one test per class), plus the failure scenario for each success scenario.
 - [ ] **Atomic and Independent Tasks**: Work is broken into small, sequential tasks with clear file boundaries, verifiable units, and verification commands.
 - [ ] **Mandatory Technical Language Standard (EN-US)**: The technical specification (`docs/specs/`), user stories, acceptance criteria, ubiquitous language terms, and task descriptions are strictly written in technical English (EN-US).
 

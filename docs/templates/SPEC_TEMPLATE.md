@@ -36,6 +36,12 @@
     - **Given** that...
     - **When**...
     - **Then** it must return HTTP `400/422` with error code `Domain.RuleViolated`.
+  - **Scenario 3 (Read Side)**: for every requirement that changes state, one scenario proving that every query, response DTO, event, and UI view that exposes the changed data shows it (e.g. "Then the list endpoint response contains the new field"). A requirement that only covers the write side is incomplete.
+- **Equivalence Classes and Boundaries** (one test per class, see `.agents/skills/csharp-hexagonal-ddd/references/testing-battery.md`):
+
+| Input / Rule | Valid classes | Invalid classes | Boundary values |
+| :--- | :--- | :--- | :--- |
+| `[field or rule]` | `[...]` | `[...]` | `[last valid, first invalid]` |
 
 ---
 
@@ -155,6 +161,7 @@ CREATE INDEX idx_table_name_owner_id ON table_name (owner_id);
 | **Backend Arch** | Architecture | `NetArchTest` | `Domain` has zero references to `Infrastructure` or `Api`. |
 | **Backend API/Infra** | Integration | `Testcontainers` + `WebApplicationFactory` | POST `201` persisting to Postgres, Outbox publishing to RabbitMQ, `401`/`403` BOLA blocking. |
 | **Frontend** | Unit / Integration | `Vitest` + `Testing Library` + `MSW` | Data rendering, Zod form validation, API error handling (400/500). |
+| **AI-backed features** | Unit + golden set + adversarial corpus | `xUnit` (+ evaluation harness) | In-scope vs refusal behavior, no system-prompt or secret leakage on injection attempts, fallback when the provider is down. |
 | **End-to-End** | E2E | `Playwright` | Complete critical user journey. |
 
 ---

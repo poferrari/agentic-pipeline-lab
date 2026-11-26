@@ -30,6 +30,18 @@ Your role is to act as the relentless guardian of software quality before any co
    - **Duplication Threshold (Dryer $\ge 0.8$)**: Flag and reject any duplicate algorithmic blocks with similarity $\ge 0.8$.
    - **Anti-Coverage Theater (Mutator)**: Verify tests test observable behavior rather than mock implementation details. Apply the empty-return rule: if methods returning default/empty still pass the test suite, reject the PR.
 
+2b. **Test Quality Audit** (rules: `.agents/skills/csharp-hexagonal-ddd/references/testing-battery.md`):
+   - **Equivalence classes and boundaries**: for each new business rule, check the tests against the Spec list: one test per class, boundaries on both edges, a failure scenario for each success scenario. Duplicate tests of the same class are an `[IMPROVEMENT]`.
+   - **Design feedback from the tests**: more than three test doubles in a test, doubles unused by some tests, test classes that keep growing "for X" variants, asserts spread across several unrelated objects, or a wish to test a private method are symptoms of cohesion, coupling, or encapsulation problems in production code. Report the production-side cause, not just the test.
+   - **Doubles policy**: entities and Value Objects must not be mocked; assertions on call counts without an observable outcome are `[BLOCKER]` when they are the only assertion.
+   - **Flakiness sources**: fixed `Task.Delay`/`Thread.Sleep` before assertions, ambient `UtcNow`/`Guid.NewGuid()` in Domain/Application, shared mutable state between tests.
+   - **Read side**: for every state change, verify that a test proves the change is visible through the query/response/event/UI.
+   - **AI-backed features**: golden set and adversarial corpus exist and pass; no system-prompt or secret leakage.
+
+2c. **Change Surface Review**:
+   - Prefer small, single-purpose PRs: a wide AI-generated change dilutes review. Flag a PR that mixes unrelated concerns or touches many services/modules and ask for a split.
+   - Any diff touching authentication or authorization (JWT validation, headers, claims, `RequireAuthorization`, policies, CORS) across more than one endpoint group needs an explicit line-by-line check, because a silent authorization regression passes functional tests.
+
 3. **OWASP Top 10 & OWASP API Security Top 10 (2023/2026) Audit**:
    - **API1 (BOLA / IDOR)**: Does the endpoint verify that the `UserId` from the validated Supabase JWT token strictly owns the queried/modified record in PostgreSQL?
    - **API2 (Broken Authentication)**: Does the Supabase JWT validator enforce `ValidateIssuerSigningKey = true`, `Issuer`, `Audience`, and `ValidateLifetime = true` with strict `ClockSkew`?

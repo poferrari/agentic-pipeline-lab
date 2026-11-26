@@ -26,6 +26,12 @@ No Task, Feature, or Pull Request is considered **Done** without **100% of appli
   - Tests verify observable business behavior, never implementation details or mock call counts.
   - **Empty Return Rule**: If tests still pass when every method returns `default`/empty, the test is invalid.
   - Test suites are resilient against mutation testing (e.g. Stryker.NET / Stryker-js): conditional flips (`>` to `<=`, `&&` to `||`) are detected and killed by assertions.
+- [ ] **Test Design Quality**:
+  - Tests derive from the Spec equivalence classes and boundaries: one test per class, no duplicates, failure scenario for each success scenario.
+  - Read side proven for every state change (the changed data is visible in the query/response/event/UI).
+  - No mocks of entities or Value Objects; no assertion that consists only of call counts on doubles.
+  - No fixed `Task.Delay`/`Thread.Sleep` before assertions and no ambient `UtcNow`/`Guid.NewGuid()` in Domain/Application code.
+  - AI-backed features have a golden set and an adversarial corpus (prompt injection, leakage, jailbreak) that pass.
 - [ ] **Unit Tests (Backend & Frontend)**:
   - All unit tests pass (`dotnet test tests/App.UnitTests` and `npm test`).
   - Domain rules, Value Objects, Command/Query Handlers, and Validators maintain >= 85% meaningful coverage on new modules.

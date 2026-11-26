@@ -42,6 +42,9 @@
   - `src/backend/src/App.Application/[Context]/[Command]/[Command]Validator.cs`
   - `src/backend/src/App.Application/[Context]/[Command]/[Command]Handler.cs`
   - `src/backend/tests/App.UnitTests/Application/[Command]HandlerTests.cs`
+- **Task Done Criteria**:
+  - Test cases derived from the Spec equivalence classes and boundary values (one test per class).
+  - If the task changes state, the matching query/response DTO/mapping/event is also updated and covered (write side and read side).
 - **Verification Command**:
   ```powershell
   dotnet test src/backend/tests/App.UnitTests --filter "FullyQualifiedName~Application"

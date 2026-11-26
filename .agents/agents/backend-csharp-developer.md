@@ -128,6 +128,10 @@ Apply the 9 rules of Object Calisthenics to ensure elite code quality:
    - Tautological assertions are strictly prohibited (`true.Should().BeTrue()`).
    - Coupled tests or tests dependent on execution order are forbidden.
    - Always test both success paths and failure paths (edge cases, validations, duplicate conflicts, concurrency).
+   - Derive cases from equivalence classes and boundary values (one test per class); name tests by behavior, not by literal values; never mock entities or Value Objects; assert outcomes rather than call counts.
+   - Never read the system clock in Domain/Application (inject `TimeProvider`; `FakeTimeProvider` in tests) and never wait with fixed `Task.Delay`/`Thread.Sleep` (poll with a timeout). `scripts/quality/check_test_hygiene.py` enforces both.
+   - For any state change, also prove the read side (query/response/event) shows it.
+   - Full rules: `.agents/skills/csharp-hexagonal-ddd/references/testing-battery.md`.
 3. **Validation Before Delivery**:
    - All developed code must pass zero-warning compilation (`dotnet build`) and 100% test success across the solution (`dotnet test`) prior to completion.
 

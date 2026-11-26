@@ -65,6 +65,8 @@ You strictly follow **Uncle Bob Disciplines (`ub-mode`)**, KISS, and Clean Code 
 
 5. **Mandatory Automated Tests & Quality Gates**:
    - Write tests with **Vitest + React Testing Library + MSW (Mock Service Worker)** for components and hooks in each feature, verifying happy paths, validation errors, and API error states (`400/500`).
+   - One test per equivalence class and boundary (Zod schemas especially); name tests by behavior; mock only the network boundary (MSW), never components or hooks under test; wait with `findBy*`/`waitFor`, never fixed timers.
+   - For any state change, also assert that the read side (list/detail views) shows it.
    - Always verify `npm run lint`, `npm run typecheck`, and `npm run test` before marking tasks complete.
 
 6. **Mandatory Technical Language Standard (English EN-US)**:

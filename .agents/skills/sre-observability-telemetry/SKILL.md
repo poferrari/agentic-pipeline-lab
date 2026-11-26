@@ -190,3 +190,33 @@ Distributed event-driven architectures must monitor the **4 RabbitMQ Golden Heal
 ### 5.2. Automated Load Testing with k6
 - Include a realistic multi-user journey script in `tests/load/` simulating concurrent virtual users (VUs with distinct UUIDs) covering frontend and all backend endpoints.
 - Monitor rate-limiting thresholds (HTTP 429) to ensure container resource protection without server crashes (0% 5xx errors).
+
+---
+
+## 6. GenAI & LLM Telemetry Standards (OpenTelemetry GenAI Conventions)
+
+When deploying features backed by Large Language Models or operating autonomous agents, apply the **OpenTelemetry Semantic Conventions for Generative AI**:
+
+### 6.1. Essential LLM Metrics
+| Metric Name | Type | Description | Unit |
+| :--- | :--- | :--- | :--- |
+| `gen_ai.client.token.usage` | Histogram | Distribution of consumed tokens per inference call (`token_type`: `prompt` \| `completion` \| `cached`) | `token` |
+| `gen_ai.client.operation.duration` | Histogram | Latency of the LLM generation request | `s` (seconds) |
+| `gen_ai.client.time_to_first_token` | Histogram | Time to First Token (TTFT) for streaming responses | `s` (seconds) |
+| `gen_ai.agent.tool_calls_total` | Counter | Total invocations of agent tools / MCP functions (`tool_name`, `status`) | `{call}` |
+| `gen_ai.cost.estimated_usd` | Counter | Financial accumulation of inference cost calculated per token rate | `USD` |
+
+### 6.2. Distributed Spans for Agent ReAct Reasoning Loops
+Decompose agent workflows into nested OpenTelemetry spans to observe reasoning degradation:
+```text
+[Span] AgentExecution: PipelineOrchestrator
+  ├── [Span] Reasoning: TaskDecomposition (model: gemini-2.5-pro, tokens: 420)
+  ├── [Span] ToolCall: mcp_github_search (target: repository_issues, duration: 180ms)
+  ├── [Span] Reasoning: PlanVerification (model: gemini-2.5-pro, tokens: 680)
+  └── [Span] ToolCall: write_spec_file (duration: 15ms)
+```
+
+### 6.3. LLM Logging & PII Sanitization Guardrail
+- Never log raw prompts containing Personally Identifiable Information (PII) such as CPF, CNPJ, API keys, or raw credit card numbers.
+- Sanitize prompt logs with regex masks (`[REDACTED_PII]`) before streaming to Loki or Tempo.
+- Record `prompt_hash`, `model_name`, `temperature`, `top_p`, and `seed` attributes on the root span to enable deterministic bug reproduction.
