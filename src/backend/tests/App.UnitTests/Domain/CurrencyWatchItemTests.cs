@@ -9,6 +9,7 @@ namespace App.UnitTests.Domain;
 public sealed class CurrencyWatchItemTests
 {
     private static readonly Guid ValidOwnerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly DateTimeOffset Now = new(2026, 11, 26, 12, 0, 0, TimeSpan.Zero);
 
     [Theory]
     [InlineData("usd", "USD")]
@@ -54,7 +55,8 @@ public sealed class CurrencyWatchItemTests
             "BRL",
             5.75m,
             notifyWhenAbove: true,
-            notes: "Export hedge target");
+            notes: "Export hedge target",
+            createdAtUtc: Now);
 
         result.IsSuccess.Should().BeTrue();
         var item = result.Value;
@@ -79,7 +81,8 @@ public sealed class CurrencyWatchItemTests
             targetCurrency,
             targetRate,
             notifyWhenAbove: false,
-            notes: "Buy dip hedge");
+            notes: "Buy dip hedge",
+            createdAtUtc: Now);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.BaseCurrency.Should().Be(baseCurrency);
@@ -97,7 +100,8 @@ public sealed class CurrencyWatchItemTests
             "brl",
             1.0m,
             notifyWhenAbove: true,
-            notes: null);
+            notes: null,
+            createdAtUtc: Now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("WatchItem.SameCurrencyNotAllowed");
@@ -115,7 +119,8 @@ public sealed class CurrencyWatchItemTests
             "BRL",
             invalidRate,
             notifyWhenAbove: true,
-            notes: null);
+            notes: null,
+            createdAtUtc: Now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("WatchItem.InvalidTargetRate");
@@ -131,7 +136,8 @@ public sealed class CurrencyWatchItemTests
             "BRL",
             5.50m,
             notifyWhenAbove: true,
-            notes: tooLongNotes);
+            notes: tooLongNotes,
+            createdAtUtc: Now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("WatchItem.NotesTooLong");
@@ -146,14 +152,16 @@ public sealed class CurrencyWatchItemTests
             "BRL",
             5.50m,
             notifyWhenAbove: true,
-            notes: null).Value;
+            notes: null,
+            createdAtUtc: Now).Value;
 
-        var evalResult = item.EvaluateMarketRate(5.65m);
+        var evalResult = item.EvaluateMarketRate(5.65m, Now.AddMinutes(5));
 
         evalResult.IsSuccess.Should().BeTrue();
         item.IsTriggered.Should().BeTrue();
         item.LastKnownRate.Should().Be(5.65m);
-        item.TriggeredAtUtc.Should().NotBeNull();
+        item.TriggeredAtUtc.Should().Be(Now.AddMinutes(5));
+        item.CreatedAtUtc.Should().Be(Now);
         item.CalculateSpreadPercentage(5.65m).Should().Be(2.73m);
         item.DomainEvents.OfType<TargetRateTriggeredDomainEvent>().Should().ContainSingle();
     }
@@ -177,7 +185,8 @@ public sealed class CurrencyWatchItemTests
             "BRL",
             targetRate,
             notifyWhenAbove,
-            null).Value;
+            null,
+            createdAtUtc: Now).Value;
 
         item.IsTargetRateMet(currentRate).Should().Be(expectedMet);
     }
@@ -193,7 +202,8 @@ public sealed class CurrencyWatchItemTests
             "BRL",
             5.0m,
             true,
-            null).Value;
+            null,
+            createdAtUtc: Now).Value;
 
         item.CalculateSpreadPercentage(rate).Should().Be(expected);
     }

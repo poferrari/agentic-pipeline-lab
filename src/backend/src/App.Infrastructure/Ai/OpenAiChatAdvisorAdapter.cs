@@ -143,10 +143,15 @@ public sealed class OpenAiChatAdvisorAdapter : IChatAdvisor
             "python", "javascript", "rust", "c++", "write a script", "hack"
         ];
 
-        bool isOffTopic = outOfScopeKeywords.Any(k => lower.Contains(k))
-            && !lower.Contains("marketpulse")
-            && !lower.Contains("rate")
-            && !lower.Contains("currency");
+        // Hostile requests are refused even when they borrow in-scope words ("rate", "currency") as camouflage.
+        string[] hostileKeywords = ["hack", "rm -rf", "drop table", "steal", "write a script"];
+
+        bool isHostile = hostileKeywords.Any(k => lower.Contains(k));
+        bool isOffTopic = isHostile
+            || (outOfScopeKeywords.Any(k => lower.Contains(k))
+                && !lower.Contains("marketpulse")
+                && !lower.Contains("rate")
+                && !lower.Contains("currency"));
 
         if (isOffTopic)
         {

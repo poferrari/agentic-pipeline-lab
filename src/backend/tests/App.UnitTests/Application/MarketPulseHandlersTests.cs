@@ -50,7 +50,8 @@ public sealed class MarketPulseHandlersTests
             exchangeProvider,
             currentUserProvider,
             eventBus,
-            validator);
+            validator,
+            TimeProvider.System);
 
         var command = new CreateWatchItemCommand("USD", "BRL", 5.60m, NotifyWhenAbove: true, "Target reached test");
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -89,7 +90,8 @@ public sealed class MarketPulseHandlersTests
             exchangeProvider,
             currentUserProvider,
             eventBus,
-            validator);
+            validator,
+            TimeProvider.System);
 
         var result = await handler.HandleAsync(new CreateWatchItemCommand("USD", "BRL", 5.50m), CancellationToken.None);
 
@@ -116,7 +118,8 @@ public sealed class MarketPulseHandlersTests
             exchangeProvider,
             currentUserProvider,
             eventBus,
-            validator);
+            validator,
+            TimeProvider.System);
 
         var tooLongNotes = new string('x', CurrencyWatchItem.MaxNotesLength + 10);
         var result = await handler.HandleAsync(new CreateWatchItemCommand("USD", "BRL", 5.50m, Notes: tooLongNotes), CancellationToken.None);
@@ -142,7 +145,7 @@ public sealed class MarketPulseHandlersTests
         exchangeProvider.GetLatestRatesAsync("EUR", Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(expectedQuote));
 
-        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator);
+        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator, TimeProvider.System);
         var result = await handler.HandleAsync(new GetExchangeRatesQuery("eur", "usd,brl"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -160,7 +163,7 @@ public sealed class MarketPulseHandlersTests
         exchangeProvider.GetLatestRatesAsync("EUR", Arg.Do<IReadOnlyCollection<string>?>(s => capturedSymbols = s), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new ExchangeRatesQuoteDto("EUR", "2026-10-28", "ECB", new Dictionary<string, decimal>(), DateTimeOffset.UtcNow)));
 
-        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator);
+        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator, TimeProvider.System);
         var result = await handler.HandleAsync(new GetExchangeRatesQuery("EUR", "USD,usd, BRL ,brl"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -174,7 +177,7 @@ public sealed class MarketPulseHandlersTests
         var exchangeProvider = Substitute.For<IMarketExchangeProvider>();
         var validator = new GetExchangeRatesQueryValidator();
 
-        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator);
+        var handler = new GetExchangeRatesQueryHandler(exchangeProvider, validator, TimeProvider.System);
         var result = await handler.HandleAsync(new GetExchangeRatesQuery("USD", "usd,USD"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

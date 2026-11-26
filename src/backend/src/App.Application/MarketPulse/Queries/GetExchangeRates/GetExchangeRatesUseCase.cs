@@ -22,7 +22,8 @@ public sealed class GetExchangeRatesQueryValidator : AbstractValidator<GetExchan
 
 public sealed class GetExchangeRatesQueryHandler(
     IMarketExchangeProvider exchangeProvider,
-    IValidator<GetExchangeRatesQuery> validator)
+    IValidator<GetExchangeRatesQuery> validator,
+    TimeProvider timeProvider)
 {
     public async Task<Result<ExchangeRatesQuoteDto>> HandleAsync(
         GetExchangeRatesQuery query,
@@ -68,12 +69,13 @@ public sealed class GetExchangeRatesQueryHandler(
             // Edge case: User explicitly requested symbols, but all of them were identical to base currency
             if (rawTokens.Length > 0 && uniqueSymbols.Count == 0)
             {
+                var now = timeProvider.GetUtcNow();
                 return Result.Success(new ExchangeRatesQuoteDto(
                     baseCode,
-                    DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
                     "Internal-SameCurrency",
                     new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) { [baseCode] = 1.0m },
-                    DateTimeOffset.UtcNow));
+                    now));
             }
 
             parsedSymbols = uniqueSymbols;

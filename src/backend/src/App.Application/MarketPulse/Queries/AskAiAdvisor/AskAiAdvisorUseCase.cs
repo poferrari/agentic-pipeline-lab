@@ -30,7 +30,8 @@ public sealed class AskAiAdvisorValidator : AbstractValidator<AskAiAdvisorReques
 public sealed class AskAiAdvisorQueryHandler(
     IChatAdvisor chatAdvisor,
     IMarketExchangeProvider exchangeProvider,
-    IValidator<AskAiAdvisorRequest> validator)
+    IValidator<AskAiAdvisorRequest> validator,
+    TimeProvider timeProvider)
 {
     public async Task<Result<AiAdvisorResponseDto>> HandleAsync(
         AskAiAdvisorRequest request,
@@ -70,7 +71,7 @@ public sealed class AskAiAdvisorQueryHandler(
             aiResult.Value.Reply,
             aiResult.Value.SuggestedActions,
             aiResult.Value.ModelUsed,
-            DateTimeOffset.UtcNow));
+            timeProvider.GetUtcNow()));
     }
 }
 

@@ -19,7 +19,7 @@ public sealed class AiAdvisorHandlerTests
     private readonly AskAiAdvisorValidator _validator = new();
 
     private AskAiAdvisorQueryHandler CreateHandler() =>
-        new(_chatAdvisor, _exchangeProvider, _validator);
+        new(_chatAdvisor, _exchangeProvider, _validator, TimeProvider.System);
 
     [Fact]
     public async Task HandleAsync_WhenRequestIsValid_ReturnsSuccessfulAdvice()

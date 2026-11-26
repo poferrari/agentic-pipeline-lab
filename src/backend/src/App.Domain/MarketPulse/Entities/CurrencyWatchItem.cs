@@ -55,7 +55,7 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
         TargetRate targetRate,
         bool notifyWhenAbove,
         string? notes,
-        DateTimeOffset? createdAtUtc = null)
+        DateTimeOffset createdAtUtc)
     {
         if (ownerId == Guid.Empty)
         {
@@ -73,7 +73,7 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
             return Result.Failure<CurrencyWatchItem>(MarketPulseErrors.NotesTooLong);
         }
 
-        var timestamp = createdAtUtc ?? DateTimeOffset.UtcNow;
+        var timestamp = createdAtUtc;
         var item = new CurrencyWatchItem(
             Guid.CreateVersion7(),
             ownerId,
@@ -105,7 +105,7 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
         decimal targetRateRaw,
         bool notifyWhenAbove,
         string? notes,
-        DateTimeOffset? createdAtUtc = null)
+        DateTimeOffset createdAtUtc)
     {
         var baseResult = CurrencyCode.Create(baseCurrencyRaw);
         if (baseResult.IsFailure)
@@ -144,7 +144,7 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
             ? marketRate >= TargetRate.Value
             : marketRate <= TargetRate.Value;
 
-    public Result EvaluateMarketRate(decimal currentMarketRate, DateTimeOffset? evaluatedAtUtc = null)
+    public Result EvaluateMarketRate(decimal currentMarketRate, DateTimeOffset evaluatedAtUtc)
     {
         if (currentMarketRate <= 0m)
         {
@@ -155,7 +155,7 @@ public sealed class CurrencyWatchItem : AggregateRoot<Guid>
 
         if (IsTargetRateMet(LastKnownRate.Value) && !IsTriggered)
         {
-            var timestamp = evaluatedAtUtc ?? DateTimeOffset.UtcNow;
+            var timestamp = evaluatedAtUtc;
             IsTriggered = true;
             TriggeredAtUtc = timestamp;
 

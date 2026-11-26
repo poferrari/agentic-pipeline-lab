@@ -81,8 +81,13 @@ public sealed class RabbitMqMessagingIntegrationTests(MarketPulseTestcontainersF
         createdItem.Should().NotBeNull();
         createdItem!.Id.Should().NotBeEmpty();
 
-        // 3. Assert: verify outbox dispatcher delivers to RabbitMQ
-        await Task.Delay(500);
+        // 3. Assert: the Outbox must dispatch the event to RabbitMQ and the consumer must process it
+        var consumed = await WaitForConditionAsync(
+            () => CurrencyAlertConsumer.IsWatchItemProcessed(createdItem.Id),
+            timeout: TimeSpan.FromSeconds(15),
+            delay: TimeSpan.FromMilliseconds(200));
+
+        consumed.Should().BeTrue("the event staged by POST /watchlist must travel Outbox -> RabbitMQ -> consumer.");
         createdItem.BaseCurrency.Should().Be("GBP");
         createdItem.TargetCurrency.Should().Be("BRL");
     }
@@ -133,8 +138,8 @@ public sealed class RabbitMqMessagingIntegrationTests(MarketPulseTestcontainersF
             await dbContext.SaveChangesAsync();
         }
 
-        // Wait a short window to allow second delivery to arrive and be rejected by idempotent guard
-        await Task.Delay(500);
+        // Proving a negative needs a bounded wait: give the Outbox at least two dispatch cycles to redeliver
+        await Task.Delay(NegativeProofWindow);
 
         // Assert: remains marked as processed, no exception thrown
         CurrencyAlertConsumer.IsEventProcessed(eventId).Should().BeTrue();
@@ -244,25 +249,34 @@ public sealed class RabbitMqMessagingIntegrationTests(MarketPulseTestcontainersF
             await eventBusPublisher.PublishAsync(integrationEvent, CancellationToken.None);
         }
 
-        // Wait to verify outbox never dispatched
-        await Task.Delay(1000);
+        // Proving a negative needs a bounded wait: give the Outbox at least two dispatch cycles to (wrongly) dispatch
+        await Task.Delay(NegativeProofWindow);
 
         // Assert: consumer never processed the uncommitted message
         CurrencyAlertConsumer.IsEventProcessed(uncommittedEventId).Should().BeFalse(
             "An uncommitted outbox message must never be published to RabbitMQ.");
     }
 
-    private static async Task<bool> WaitForConditionAsync(Func<bool> condition, TimeSpan timeout, TimeSpan delay)
+    /// <summary>
+    /// The Outbox polls every second (see AddEntityFrameworkOutbox QueryDelay), so a negative assertion must wait
+    /// longer than one cycle or it proves nothing.
+    /// </summary>
+    private static readonly TimeSpan NegativeProofWindow = TimeSpan.FromSeconds(3);
+
+    private static Task<bool> WaitForConditionAsync(Func<bool> condition, TimeSpan timeout, TimeSpan delay) =>
+        WaitForConditionAsync(() => Task.FromResult(condition()), timeout, delay);
+
+    private static async Task<bool> WaitForConditionAsync(Func<Task<bool>> condition, TimeSpan timeout, TimeSpan delay)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
-            if (condition())
+            if (await condition())
             {
                 return true;
             }
             await Task.Delay(delay);
         }
-        return condition();
+        return await condition();
     }
 }

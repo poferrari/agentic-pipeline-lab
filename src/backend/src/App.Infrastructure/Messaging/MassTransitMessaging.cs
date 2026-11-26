@@ -76,8 +76,22 @@ public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger)
 {
     private static readonly ConcurrentDictionary<Guid, DateTimeOffset> ProcessedEvents = new();
 
+    private static readonly ConcurrentDictionary<Guid, Guid> ProcessedWatchItems = new();
+
     public static bool IsEventProcessed(Guid eventId) => ProcessedEvents.ContainsKey(eventId);
-    public static void ResetTracking() => ProcessedEvents.Clear();
+    public static bool IsWatchItemProcessed(Guid watchItemId) => ProcessedWatchItems.ContainsKey(watchItemId);
+
+    public static void ResetTracking()
+    {
+        ProcessedEvents.Clear();
+        ProcessedWatchItems.Clear();
+    }
+
+    private static void ForgetProcessed(Guid eventId, Guid watchItemId)
+    {
+        ProcessedEvents.TryRemove(eventId, out _);
+        ProcessedWatchItems.TryRemove(watchItemId, out _);
+    }
 
     public Task Consume(ConsumeContext<CurrencyAlertNotificationEvent> context)
     {
@@ -156,6 +170,8 @@ public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger)
             return;
         }
 
+        ProcessedWatchItems[message.WatchItemId] = eventId;
+
         logger.LogInformation(
             "EventBus [CONSUME_START] Processing CurrencyAlert for WatchItem {WatchItemId} ({BaseCurrency}/{TargetCurrency} @ {TargetRate}, LiveRate: {CurrentRate}, Triggered: {IsTriggered}) [EventId: {EventId}, CorrelationId: {CorrelationId}, RetryAttempt: {RetryAttempt}]",
             message.WatchItemId,
@@ -194,7 +210,7 @@ public sealed class CurrencyAlertConsumer(ILogger<CurrencyAlertConsumer> logger)
         catch (Exception ex)
         {
             // Crucial resilience fix: Remove event from tracking so retry attempts are not treated as duplicate skips
-            ProcessedEvents.TryRemove(eventId, out _);
+            ForgetProcessed(eventId, message.WatchItemId);
 
             stopwatch.Stop();
             MarketPulseDiagnostics.MessagingConsumedCounter.Add(1,

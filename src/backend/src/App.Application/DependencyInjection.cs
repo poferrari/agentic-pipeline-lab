@@ -6,6 +6,7 @@ using App.Application.MarketPulse.Queries.GetWatchItemById;
 using App.Application.MarketPulse.Queries.GetWatchItems;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace App.Application;
 
@@ -14,6 +15,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<GetExchangeRatesQueryHandler>();
         services.AddScoped<CreateWatchItemCommandHandler>();

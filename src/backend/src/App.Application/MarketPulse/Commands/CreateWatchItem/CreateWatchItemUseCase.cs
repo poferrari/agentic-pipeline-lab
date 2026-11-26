@@ -52,7 +52,8 @@ public sealed class CreateWatchItemCommandHandler(
     IMarketExchangeProvider exchangeProvider,
     ICurrentUserProvider currentUserProvider,
     IEventBusPublisher eventBusPublisher,
-    IValidator<CreateWatchItemCommand> validator)
+    IValidator<CreateWatchItemCommand> validator,
+    TimeProvider timeProvider)
 {
     public async Task<Result<WatchItemDto>> HandleAsync(
         CreateWatchItemCommand command,
@@ -74,14 +75,16 @@ public sealed class CreateWatchItemCommandHandler(
                 Error.Validation("WatchItem.ValidationFailed", validationResult.Errors[0].ErrorMessage));
         }
 
-        // 2. Domain Model creation enforcing domain invariants
+        // 2. Domain Model creation enforcing domain invariants (the clock is owned by this layer, never by the Domain)
+        var now = timeProvider.GetUtcNow();
         var watchItemResult = CurrencyWatchItem.Create(
             ownerId,
             command.BaseCurrency,
             command.TargetCurrency,
             command.TargetRate,
             command.NotifyWhenAbove,
-            command.Notes);
+            command.Notes,
+            now);
 
         if (watchItemResult.IsFailure)
         {
@@ -112,7 +115,7 @@ public sealed class CreateWatchItemCommandHandler(
         if (quoteResult.IsSuccess &&
             quoteResult.Value.Rates.TryGetValue(watchItem.TargetCurrency.Value, out var liveRate))
         {
-            watchItem.EvaluateMarketRate(liveRate);
+            watchItem.EvaluateMarketRate(liveRate, now);
         }
 
         await repository.AddAsync(watchItem, ct);
@@ -136,7 +139,7 @@ public sealed class CreateWatchItemCommandHandler(
                 watchItem.IsTriggered,
                 watchItem.Notes,
                 correlationId,
-                DateTimeOffset.UtcNow),
+                now),
             ct);
 
         await unitOfWork.SaveChangesAsync(ct);
